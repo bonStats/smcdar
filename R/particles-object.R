@@ -15,6 +15,8 @@ particles <- function(...){
 
   prt_list <- list(...)
 
+  stopifnot(!is.null(names(prt_list)))
+
   stopifnot( components_have_same_particle_number(prt_list) )
 
   dim_list <- p_dim(prt_list)
@@ -50,10 +52,16 @@ particles <- function(...){
 #' x <- particles(beta = matrix(rnorm(20), nrow = 10, ncol = 2))
 #' print(x)
 
-print.particle <- function(x, ...){
+print.particles <- function(x, ...){
 
-  cat("Particle with", length(x), "components:\n")
-  utils::str(x, no.list = T, ...)
+  cat(nrow(x), "particles with", length(x), "components:\n")
+  compd <- p_components(x)
+
+  print_len <- min(3, nrow(x))
+
+  for(comp_name in compd$nam){
+    cat(comp_name,"[ length =", compd$len[comp_name],"]", x[1:print_len, compd$pos[comp_name]], "...\n")
+  }
 
 }
 
@@ -65,9 +73,9 @@ print.particle <- function(x, ...){
 #' @param attr the particular attribute of the component to access.
 #'
 #' @export
-p_components <- function(x, attr){
+p_components <- function(x, attr = NULL){
 
-  if(missing(attr)){
+  if(is.null(attr)){
 
     attr(x, which = "components")
 
@@ -93,7 +101,7 @@ length.particles <- function(x){
 #' @param x particles object.
 #'
 #' @export
-n_particles <- function(x){
+num_particles <- function(x){
 
   nrow(x)
 
@@ -107,12 +115,12 @@ get_comp_details <- function(pcomp, i){
     comp_i <- which( pcomp$nam ==  i)
   }
 
-  stopifnot(length(comp_i) == 1L, comp_i <= 0, comp_i > length(pcomp$nam))
+  stopifnot(length(comp_i) == 1L, comp_i > 0, comp_i <= length(pcomp$nam))
 
   list(name = pcomp$nam[comp_i],
        start = pcomp$pos[comp_i],
        stop = pcomp$pos[comp_i] + pcomp$len[comp_i] - 1,
-       dim = pcomp$dim[comp_i]
+       dim = pcomp$dim[[comp_i]]
        )
 
 }
@@ -126,7 +134,7 @@ get_comp_details <- function(pcomp, i){
 
   if(missing(p_i)){
 
-    p_i <- 1:n_particles(x)
+    p_i <- 1:num_particles(x)
 
   }
 
@@ -138,7 +146,7 @@ get_comp_details <- function(pcomp, i){
 
     matrix(x[p_i,compd$start:compd$stop], nrow = length(p_i), ncol = compd$dim[2])
 
-  } else if(length(compd$dim) > 3){
+  } else if(length(compd$dim) >= 3){
 
     array(x[,compd$start:compd$stop], dim = c(length(p_i), compd$dim[-1]) )
 
@@ -155,11 +163,11 @@ get_comp_details <- function(pcomp, i){
 
   if(missing(p_i)){
 
-    p_i <- 1:n_particles(x)
+    p_i <- 1:num_particles(x)
 
   }
 
-  x[p_i,compd$start:compd$stop] <- p_shape(value)
+  x[p_i,compd$start:compd$stop] <- p_shape(value,...)
 
   return(x)
 

@@ -4,7 +4,7 @@
 \alias{p_components}
 \title{Particle components.}
 \usage{
-p_components(x, attr)
+p_components(x, attr = NULL)
 }
 \arguments{
 \item{x}{particles object.}

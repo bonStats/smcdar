@@ -26,6 +26,9 @@ component_length <- function(dim_list){
 
 absolute_position <- function(dim_list){
 
-  c(1, cumsum(component_length(dim_list))[-1])
+  comp_len <- component_length(dim_list)
+  pos <- cumsum(comp_len) - comp_len + 1
+  names(pos) <- names(dim_list)
+  pos
 
 }
