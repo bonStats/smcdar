@@ -54,10 +54,10 @@ particles <- function(...){
 
 print.particles <- function(x, ...){
 
-  cat(nrow(x), "particles with", length(x), "components:\n")
+  cat(num_particles(x), "particles with", length(x), "components:\n")
   compd <- p_components(x)
 
-  print_len <- min(3, nrow(x))
+  print_len <- min(3, num_particles(x))
 
   for(comp_name in compd$nam){
     cat(comp_name,"[ length =", compd$len[comp_name],"]", x[1:print_len, compd$pos[comp_name]], "...\n")
@@ -94,6 +94,7 @@ length.particles <- function(x){
 
 }
 
+
 #' Number of particles per component.
 #'
 #' Get the number of particles for a particular object.
@@ -128,6 +129,8 @@ get_comp_details <- function(pcomp, i){
 #' @export
 `[[.particles` <- function(x, i, p_i, ...){
 
+  stopifnot(length(i) == 1)
+
   pcomp <- p_components(x)
 
   compd <- get_comp_details(pcomp, i)
@@ -157,6 +160,8 @@ get_comp_details <- function(pcomp, i){
 #' @export
 `[[<-.particles` <- function(x, i, p_i, ..., value){
 
+  stopifnot(length(i) == 1)
+
   pcomp <- p_components(x)
 
   compd <- get_comp_details(pcomp, i)
@@ -172,3 +177,4 @@ get_comp_details <- function(pcomp, i){
   return(x)
 
 }
+
