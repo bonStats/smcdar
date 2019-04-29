@@ -10,7 +10,6 @@
 #' len <- 2
 #' rv <- matrix(rnorm(num_particles * len), nrow = num_particles, ncol = len)
 #' prts <- particles(beta = rv)
-
 particles <- function(...){
 
   prt_list <- list(...)

@@ -14,4 +14,7 @@ Suggests:
 Imports: 
     stats,
     Matrix,
-    expm
+    expm,
+    Rcpp
+LinkingTo: 
+    Rcpp
