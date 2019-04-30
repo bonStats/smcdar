@@ -19,7 +19,7 @@ generator_matrix_lotka_volterra_ctmc(theta, y1_min = 0L, y1_max,
 \item{y2_max}{Max for y2, integer.}
 }
 \value{
-Sparse matrix
+Sparse generator matrix
 }
 \description{
 Generator matrix for Lotka-Volterra continuous-time Markov chain

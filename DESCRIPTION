@@ -16,6 +16,7 @@ Imports:
     Matrix,
     expm,
     Rcpp,
-    purrr
+    purrr,
+    methods
 LinkingTo: 
     Rcpp
