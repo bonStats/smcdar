@@ -15,6 +15,7 @@ Imports:
     stats,
     Matrix,
     expm,
-    Rcpp
+    Rcpp,
+    purrr
 LinkingTo: 
     Rcpp

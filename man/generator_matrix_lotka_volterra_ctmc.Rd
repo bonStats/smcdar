@@ -10,13 +10,13 @@ generator_matrix_lotka_volterra_ctmc(theta, y1_min = 0L, y1_max,
 \arguments{
 \item{theta}{Numeric vector of length 3.}
 
-\item{y1_min}{Min for y1, default is 0.}
+\item{y1_min}{Min for y1, integer, default is 0.}
 
-\item{y1_max}{Max for y1.}
+\item{y1_max}{Max for y1, integer.}
 
-\item{y2_min}{Min for y2, default is 0.}
+\item{y2_min}{Min for y2, integer, default is 0.}
 
-\item{y2_max}{Max for y2.}
+\item{y2_max}{Max for y2, integer.}
 }
 \value{
 Sparse matrix
