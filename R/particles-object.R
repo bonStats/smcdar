@@ -3,6 +3,7 @@
 #' \code{particles} returns a particle with specified names.
 #'
 #' @param ... Names and types of object that is being used for each component in a particle.
+#' @param weights (Un)normalised weights of particles being created.
 #'
 #' @export
 #' @examples
@@ -10,7 +11,7 @@
 #' len <- 2
 #' rv <- matrix(rnorm(num_particles * len), nrow = num_particles, ncol = len)
 #' prts <- particles(beta = rv)
-particles <- function(...){
+particles <- function(..., weights = 1){
 
   prt_list <- list(...)
 
@@ -32,9 +33,14 @@ particles <- function(...){
                 lapply(prt_list, FUN = function(s) p_shape(s, ... = NULL))
               )
 
+  stopifnot(length(weights) == 1 | length(weights) == nrow(prts_mat))
+
+  unn_log_weights <- rep(0, times = nrow(prts_mat))
+  unn_log_weights[] <- log(weights)
 
   class(prts_mat) <- c("particles","matrix")
   attr(prts_mat, "components") <- comp_attr
+  attr(prts_mat, "log_weights") <- log_weights_normalise(unn_log_weights)
   return(prts_mat)
 
 }
@@ -177,3 +183,53 @@ get_comp_details <- function(pcomp, i){
 
 }
 
+#' Get particle weights
+#'
+#' @param object Particles object.
+#' @param log Return log weights?
+#'
+#' @return Weights
+#' @export
+#'
+weights.particles <- function(object, log = FALSE){
+
+  log_w <- attr(object, "log_weights")
+
+  if(log){
+    log_w
+  } else {
+    exp(log_w)
+  }
+
+}
+
+#' @export
+`weights<-` <- function(object, ...){
+
+  UseMethod("weights<-")
+
+}
+
+
+#' Set particle weights
+#'
+#' @param object Particles object.
+#' @param value New particle weights.
+#' @param log Input is log weights?
+#'
+#' @export
+#'
+`weights<-.particles` <- function(object, value, log = FALSE){
+
+  if(log){
+    log_w <- value
+  } else {
+    stopifnot( all(value >= 0) )
+    log_w <- log(value)
+  }
+
+  attr(object, "log_weights") <- log_weights_normalise(log_w)
+
+  return(object)
+
+}

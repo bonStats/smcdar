@@ -5,7 +5,7 @@
 #' @param log_posterior A function for the log-posterior.
 #' @param log_mu A function for the starting distribution.
 #'
-#' @return
+#' @return Function that outputs annealed log-likelihood.
 #' @export
 log_geometric_anneal_func <- function(log_posterior, log_mu){
 
@@ -31,7 +31,7 @@ log_geometric_anneal_func <- function(log_posterior, log_mu){
 #' @param log_likelihood A function for the log-likelihood.
 #' @param log_prior A function for the starting distribution.
 #'
-#' @return
+#' @return Function that outputs annealed log-likelihood.
 #' @export
 log_likelihood_anneal_func <- function(log_likelihood, log_prior){
 

@@ -4,10 +4,12 @@
 \alias{particles}
 \title{Create particles object.}
 \usage{
-particles(...)
+particles(..., weights = 1)
 }
 \arguments{
 \item{...}{Names and types of object that is being used for each component in a particle.}
+
+\item{weights}{(Un)normalised weights of particles being created.}
 }
 \description{
 \code{particles} returns a particle with specified names.

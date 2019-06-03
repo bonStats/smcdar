@@ -47,3 +47,10 @@ is_upper_triangular_matrix <- function(mat, eps = 1e-10){
   sum( abs( mat[lower.tri(mat)]) ) < eps
 
 }
+
+
+log_weights_normalise <- function(log_w){
+
+  log_w - log( sum( exp(log_w) ) )
+
+}
