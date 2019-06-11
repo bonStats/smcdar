@@ -18,6 +18,8 @@
 #' @docType package
 #' @name smcdar
 #'
+#' @importFrom stats weights
+#'
 ## usethis namespace: start
 #' @useDynLib smcdar, .registration = TRUE
 #' @importFrom Rcpp sourceCpp

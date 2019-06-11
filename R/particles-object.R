@@ -203,8 +203,14 @@ weights.particles <- function(object, log = FALSE){
 
 }
 
+#' Set  weights
+#'
+#' @param object Object.
+#' @param ... Other parameters.
+#' @param value New weights.
+#'
 #' @export
-`weights<-` <- function(object, ...){
+`weights<-` <- function(object, ..., value){
 
   UseMethod("weights<-")
 
@@ -219,7 +225,7 @@ weights.particles <- function(object, log = FALSE){
 #'
 #' @export
 #'
-`weights<-.particles` <- function(object, value, log = FALSE){
+`weights<-.particles` <- function(object, log = FALSE, value){
 
   if(log){
     log_w <- value

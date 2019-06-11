@@ -9,9 +9,9 @@
 \arguments{
 \item{object}{Particles object.}
 
-\item{value}{New particle weights.}
-
 \item{log}{Input is log weights?}
+
+\item{value}{New particle weights.}
 }
 \description{
 Set particle weights

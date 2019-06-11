@@ -26,14 +26,14 @@ generator_matrix_lotka_volterra_ctmc <- function(theta, y1_min = 0L, y1_max, y2_
 
 #' Log-likelihood for Lotka-Volterra continuous-time Markov chain
 #'
-#' @param theta Numeric vector of length 3.
+#' @param theta Parameters, numeric vector of length 3.
 #' @param y1 Observed y1.
 #' @param y2 Observed y2.
 #' @param times Observed times.
 #' @param y1_max Max for y1, integer.
 #' @param y2_max Max for y2, integer.
 #'
-#' @return log-likelihood (numeric)
+#' @return log-likelihood (numeric).
 #'
 #' @export
 #'

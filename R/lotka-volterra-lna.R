@@ -1,5 +1,6 @@
 #' Time-derivative for LNA of Lotka-Volterra CTMC
 #'
+#' @param t time parameter (not used, but needed for ode solver).
 #' @param y Population vector.
 #' @param theta Parameter vector.
 #'
@@ -52,6 +53,16 @@ d_dt_lotka_volterra_lna <- function(t, y, theta){
 }
 
 
+#' Log-likelihood for Lotka-Volterra Linear Noise Approximation of CTMC
+#'
+#' @param theta Parameters, numeric vector of length 3.
+#' @param y1 Observed y1.
+#' @param y2 Observed y2.
+#' @param times Observed times.
+#'
+#' @return log-likelihood (numeric)
+#' @export
+#'
 log_lhood_lotka_volterra_lna <- function(theta, y1, y2, times){
 
   # ode outside of loop?
@@ -64,7 +75,7 @@ log_lhood_lotka_volterra_lna <- function(theta, y1, y2, times){
 
     if(y1[t] == 0 & y2[t] == 0) return(loglike) # all extinct
 
-    osol <- ode(y = c(y1[t-1],y2[t-1],0,0,0),
+    osol <- deSolve::ode(y = c(y1[t-1],y2[t-1],0,0,0),
                 times = c(0, d_times[t-1]),
                 func = d_dt_lotka_volterra_lna,
                 parms = theta,
