@@ -5,7 +5,7 @@
 #'
 #' @return
 #' @export
-dy_dt_lotka_volterra_lna <- function(y, theta){
+d_dt_lotka_volterra_lna <- function(t, y, theta){
 
   stopifnot(
     length(y) == 5,
@@ -45,37 +45,63 @@ dy_dt_lotka_volterra_lna <- function(y, theta){
   ydot[3] <- V_F_trans[1,1] + S_H_S[1,1] + V_F_trans[1,1] # F_V[1,1] == V_F_trans[1,1]
   ydot[4] <- V_F_trans[1,2] + S_H_S[1,2] + V_F_trans[2,1] # F_V[1,2] == V_F_trans[2,1]
   ydot[5] <- V_F_trans[2,2] + S_H_S[2,2] + V_F_trans[2,2] # F_V[2,2] == V_F_trans[2,2]
+   # are these equations correct?
 
-  return(ydot)
+  return(list(ydot))
 
 }
 
 
-# log_lhood_lotka_volterra_lna <- function(theta, y, max_time, dt)
-#
-#   y1 = y(1,1); y2 = y(1,2);
-#
-#   [~,sol] = ode45(@(t,yi)lotka_volterra_lna(t,yi,theta),0:dt:dt,[y1;y2;0;0;0]);
-#   loglike = 0.0;
-#   for t = 2:(max_time+1)
-#   Sigma_t = [sol(end,3) sol(end,4); sol(end,4) sol(end,5)];
-#   if (any(diag(Sigma_t)<0))
-#     loglike = -Inf;
-#   return;
-#   end
-#   mu_t = [sol(end,1); sol(end,2)];
-#   y_t = [y(t,1); y(t,2)];
-#
-#   if (y(t-1,1) == 0 && y(t-1,2) ~= 0) % prey extinct
-#   loglike = loglike - 0.5/Sigma_t(2,2)*(y_t(2) - sol(end,2))^2;
-#   elseif (y(t-1,1) ~= 0 && y(t-1,2) == 0) % predator extinct
-#   loglike = loglike - 0.5/Sigma_t(1,1)*(y_t(1) - sol(end,1))^2;
-#   elseif (y(t-1,1) == 0 && y(t-1,2) == 0) % both populations extinct.  Point mass transition density
-#   return;
-#   else
-#     loglike = loglike -0.5*(y_t-mu_t)'*inv(Sigma_t)*(y_t-mu_t);
-#   end
-#
-#   [~,sol] = ode45(@(t,yi)lotka_volterra_lna(t,yi,theta),0:dt:dt,[y_t;0;0;0]);
-# end
-#
+log_lhood_lotka_volterra_lna <- function(theta, y1, y2, times){
+
+  # ode outside of loop?
+
+  d_times <- diff(times)
+
+  loglike <- 0
+
+  for(t in 2:length(times) ){
+
+    if(y1[t] == 0 & y2[t] == 0) return(loglike) # all extinct
+
+    osol <- ode(y = c(y1[t-1],y2[t-1],0,0,0),
+                times = c(0, d_times[t-1]),
+                func = d_dt_lotka_volterra_lna,
+                parms = theta,
+                method = "ode45", rtol = 1e-06, atol = 1e-06)
+
+    Sigma_t <- matrix(c(osol[2,4],osol[2,5],
+                       osol[2,5],osol[2,6]),
+                     ncol = 2, byrow = T)
+
+    if( det(Sigma_t) <= 0 ){
+      return(-Inf)
+    }
+
+    Mu_t <- osol[2,2:3]
+
+    if( y1[t] == 0 & y2[t] != 0){ # prey extinct
+
+      loglike <- loglike - 0.5*((y2[t] - Mu_t[2])^2) / Sigma_t[2,2]
+
+    } else if( y1[t] != 0 & y2[t] == 0){ # predator extinct
+
+      loglike <- loglike - 0.5*((y1[t] - Mu_t[1])^2) / Sigma_t[1,1]
+
+    } else {
+
+      chol_Sigma <- chol(Sigma_t)
+
+     #t(c(y1[t], y2[t]) - Mu_t)%*% solve(Sigma_t) %*% (c(y1[t], y2[t]) - Mu_t)
+
+      loglike <- loglike - 0.5 * crossprod(backsolve(chol_Sigma, c(y1[t], y2[t]) - Mu_t, transpose = T))[1]
+
+    }
+
+  }
+
+  return(loglike)
+
+}
+
+

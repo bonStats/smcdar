@@ -4,7 +4,7 @@ Title: Delayed-acceptance SMC
 Version: 0.1.0
 Authors@R: person("Joshua J", "Bon", email = "joshuajbon@gmail.com",
                   role = c("aut", "cre"))
-Description: Implements delayed acceptance SMC based on work from C. Drovandi.
+Description: Implements delayed acceptance SMC based on work from C. Drovandi and J. Bon.
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
@@ -17,6 +17,7 @@ Imports:
     expm,
     Rcpp,
     purrr,
-    methods
+    methods,
+    deSolve
 LinkingTo: 
     Rcpp
