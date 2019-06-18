@@ -1,3 +1,55 @@
+## matlab
+dat <- read.csv("~/sdrive/Research/smc-da/lotka_volterra_matlab/test1/data.csv", header = F, col.names = c("y1","y2","t"))
+
+gen1 <- read.csv("~/sdrive/Research/smc-da/lotka_volterra_matlab/test1/generator.csv", header = F, col.names = c("i","j","x"))
+theta1 <-  as.matrix(read.csv("~/sdrive/Research/smc-da/lotka_volterra_matlab/test1/theta.csv",header = F))
+max_vals1 <-  as.matrix(read.csv("~/sdrive/Research/smc-da/lotka_volterra_matlab/test1/max_vals.csv",header = F))
+ll1_m <-  as.matrix(read.csv("~/sdrive/Research/smc-da/lotka_volterra_matlab/test1/log_like.csv",header = F))
+
+gen2 <- read.csv("~/sdrive/Research/smc-da/lotka_volterra_matlab/test2/generator.csv",header = F, col.names = c("i","j","x"))
+theta2 <-  as.matrix(read.csv("~/sdrive/Research/smc-da/lotka_volterra_matlab/test2/theta.csv",header = F))
+max_vals2 <-  as.matrix(read.csv("~/sdrive/Research/smc-da/lotka_volterra_matlab/test2/max_vals.csv",header = F))
+ll2_m <-  as.matrix(read.csv("~/sdrive/Research/smc-da/lotka_volterra_matlab/test2/log_like.csv",header = F))
+
+
+# check
+G1_r <- generator_matrix_lotka_volterra_ctmc(theta1[1,], y1_max = max_vals1[1], y2_max = max_vals1[2])
+
+G1_m <- Matrix::sparseMatrix(i = gen1$i,
+                     j =  gen1$j,
+                     x = gen1$x,
+                     giveCsparse = FALSE)
+
+sum( abs(G1_r - G1_m) > 1e-8)
+
+G2_r <- generator_matrix_lotka_volterra_ctmc(theta2[1,], y1_max = max_vals2[1], y2_max = max_vals2[2])
+
+G2_m <- Matrix::sparseMatrix(i = gen2$i,
+                             j =  gen2$j,
+                             x = gen2$x,
+                             giveCsparse = FALSE)
+
+sum( abs(G2_r - G2_m) > 1e-8)
+
+
+ll1_r1 <- log_lhood_lotka_volterra_ctmc(theta1, y1 = dat$y1, y2 = dat$y2, times = dat$t,   y1_max = max_vals1[1], y2_max = max_vals1[2], package = "expoRkit")
+ll1_r2 <- log_lhood_lotka_volterra_ctmc(theta1, y1 = dat$y1, y2 = dat$y2, times = dat$t,   y1_max = max_vals1[1], y2_max = max_vals1[2], package = "expm")
+
+ll1_r - ll1_m
+
+v <- rep(0, nrow(G1_r))
+v[123] <- 1
+e1 <- expm::expAtv(G1_r, v = v, t = 1)
+e2 <- expoRkit::expv(G1_r, v, 1)
+
+system.time(
+replicate(100, expm::expAtv(G1_r, v = v, t = 1))
+)
+
+system.time(
+  replicate(100, expoRkit::expv(G1_r, v, 1))
+)
+
 ## change to unit testing
 
 library(Matrix)

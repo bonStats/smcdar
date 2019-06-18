@@ -4,7 +4,7 @@
 \alias{log_lhood_lotka_volterra_ctmc}
 \title{Log-likelihood for Lotka-Volterra continuous-time Markov chain}
 \usage{
-log_lhood_lotka_volterra_ctmc(theta, y1, y2, times, y1_max, y2_max)
+log_lhood_lotka_volterra_ctmc(theta, y1, y2, times, y1_max, y2_max, ...)
 }
 \arguments{
 \item{theta}{Parameters, numeric vector of length 3.}
@@ -18,6 +18,8 @@ log_lhood_lotka_volterra_ctmc(theta, y1, y2, times, y1_max, y2_max)
 \item{y1_max}{Max for y1, integer.}
 
 \item{y2_max}{Max for y2, integer.}
+
+\item{...}{To be passed to prob function.}
 }
 \value{
 log-likelihood (numeric).

@@ -15,6 +15,7 @@ Imports:
     stats,
     Matrix,
     expm,
+    expoRkit,
     Rcpp,
     purrr,
     methods,

@@ -32,12 +32,13 @@ generator_matrix_lotka_volterra_ctmc <- function(theta, y1_min = 0L, y1_max, y2_
 #' @param times Observed times.
 #' @param y1_max Max for y1, integer.
 #' @param y2_max Max for y2, integer.
+#' @param ... To be passed to prob function.
 #'
 #' @return log-likelihood (numeric).
 #'
 #' @export
 #'
-log_lhood_lotka_volterra_ctmc <- function(theta, y1, y2, times, y1_max, y2_max){
+log_lhood_lotka_volterra_ctmc <- function(theta, y1, y2, times, y1_max, y2_max, ...){
 
   Gmat <- generator_matrix_lotka_volterra_ctmc(theta = theta,
                                                y1_min = 0L, y1_max = y1_max,
@@ -55,7 +56,8 @@ log_lhood_lotka_volterra_ctmc <- function(theta, y1, y2, times, y1_max, y2_max){
       elapsed_time = diff(times)
         ),
     .f = prob_lotka_volterra_ctmc,
-    generator_matrix = Gmat
+    generator_matrix = Gmat,
+    ...
     )
 
   sum( log(probs) )
@@ -91,18 +93,25 @@ unflattened_state_lotka_volterra <- function(z, y1_min, y1_max, y2_min, y2_max){
 
 }
 
-prob_lotka_volterra_ctmc <- function(flat_init_state, flat_final_state, elapsed_time, generator_matrix){
+prob_lotka_volterra_ctmc <- function(flat_init_state, flat_final_state, elapsed_time, generator_matrix, package = "expoRkit"){
 
   ffinal <- rep(0, times = nrow(generator_matrix))
   ffinal[flat_final_state] <- 1
 
-  # expm::expAtv could be sped up by using a sparse "v" since it is all 0s and one 1
-  res <- expm::expAtv(A = generator_matrix, t = elapsed_time, v = ffinal)
+  if(package == "expoRkit"){
 
-  if(abs(res$error) > 1e-03) warning("Numerical error above 0.001")
+    res <- expoRkit::expv(x = generator_matrix, v = ffinal, t = elapsed_time, Markov = T, transpose = F)[flat_init_state,]
 
-  res$eAtv[flat_init_state]
+  } else {
 
+    # expm::expAtv could be sped up by using a sparse "v" since it is all 0s and one 1
+    out <- expm::expAtv(A = generator_matrix, t = elapsed_time, v = ffinal)
+    res <- out$eAtv[flat_init_state]
+    if(abs(out$error) > 1e-03) warning("Numerical error above 0.001")
+
+  }
+
+  res
 
 }
 
