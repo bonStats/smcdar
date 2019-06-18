@@ -3,8 +3,10 @@
 using namespace std;
 using namespace Rcpp;
 
+//y1 ys[0] prey
+//y2 ys[1] pred
 
-vector<int> obtain_state_counts_lotka_volterra(int y1, int y2, int state, int y1_min, int y1_max, int y2_min, int y2_max){
+vector<int> state_lotka_volterra(int state, int y1_min, int y1_max, int y2_min, int y2_max){
 
   vector<int> ys(2);
 
@@ -15,7 +17,7 @@ vector<int> obtain_state_counts_lotka_volterra(int y1, int y2, int state, int y1
 
 }
 
-int obtain_state_lotka_volterra(int y1, int y2, int y1_min, int y1_max, int y2_min, int y2_max){
+int flat_state_lotka_volterra(int y1, int y2, int y1_min, int y1_max, int y2_min, int y2_max){
 
   return ((y1 - y1_min)*(y2_max - y2_min + 1) + (y2 - y2_min + 1));
 
@@ -25,6 +27,7 @@ int obtain_state_lotka_volterra(int y1, int y2, int y1_min, int y1_max, int y2_m
 List lotka_volterra_generator(NumericVector theta, int y1_min, int y1_max, int y2_min, int y2_max) {
 
   double cum_sum;
+  double rate_i;
   int num_states, i, state;
   vector<int> ys(2);
 
@@ -38,33 +41,42 @@ List lotka_volterra_generator(NumericVector theta, int y1_min, int y1_max, int y
   for (i = 1; i<=num_states; i++){
     cum_sum = 0;
 
-    ys = obtain_state_counts_lotka_volterra(ys[0], ys[1], i, y1_min, y1_max, y2_min, y2_max);
+    ys = state_lotka_volterra(i, y1_min, y1_max, y2_min, y2_max);
 
-    // check to see if a prey can die
+    // check to see if a prey can be born
     if (ys[0] < y1_max){
-      state = obtain_state_lotka_volterra(ys[0]+1,ys[1],y1_min,y1_max,y2_min,y2_max);
-      rows.push_back(i);
-      cols.push_back(state);
-      values.push_back(theta[0]*ys[0]);
-      cum_sum += values.back(); // get last value, i.e. theta[0]*ys[0]
+      state = flat_state_lotka_volterra(ys[0]+1,ys[1],y1_min,y1_max,y2_min,y2_max);
+      rate_i = theta[0]*ys[0];
+      if(rate_i > 0.0){
+        rows.push_back(i);
+        cols.push_back(state);
+        values.push_back(rate_i);
+        cum_sum += values.back(); // get last value, i.e. theta[0]*ys[0]
+      }
     }
 
     // check to see if predator can kill a prey
     if (ys[0] > y1_min && ys[1]< y2_max){
-      state = obtain_state_lotka_volterra(ys[0]-1,ys[1]+1,y1_min,y1_max,y2_min,y2_max);
-      rows.push_back(i);
-      cols.push_back(state);
-      values.push_back(theta[1]*ys[0]*ys[1]);
-      cum_sum += values.back();
+      state = flat_state_lotka_volterra(ys[0]-1,ys[1]+1,y1_min,y1_max,y2_min,y2_max);
+      rate_i = theta[1]*ys[0]*ys[1];
+      if(rate_i > 0.0){
+        rows.push_back(i);
+        cols.push_back(state);
+        values.push_back(rate_i);
+        cum_sum += values.back();
+      }
     }
 
     // check to see if a predator can die
     if (ys[1]> y2_min){
-      state = obtain_state_lotka_volterra(ys[0], ys[1]-1, y1_min, y1_max, y2_min, y2_max);
-      rows.push_back(i);
-      cols.push_back(state);
-      values.push_back(theta[2]*ys[1]);
-      cum_sum += values.back();
+      state = flat_state_lotka_volterra(ys[0], ys[1]-1, y1_min, y1_max, y2_min, y2_max);
+      rate_i = theta[2]*ys[1];
+      if(rate_i > 0.0){
+        rows.push_back(i);
+        cols.push_back(state);
+        values.push_back(rate_i);
+        cum_sum += values.back();
+      }
     }
 
     // now make sure we get the diagonal term correct
