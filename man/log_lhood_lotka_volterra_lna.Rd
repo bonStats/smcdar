@@ -4,7 +4,7 @@
 \alias{log_lhood_lotka_volterra_lna}
 \title{Log-likelihood for Lotka-Volterra Linear Noise Approximation of CTMC}
 \usage{
-log_lhood_lotka_volterra_lna(theta, y1, y2, times)
+log_lhood_lotka_volterra_lna(theta, y1, y2, times, ...)
 }
 \arguments{
 \item{theta}{Parameters, numeric vector of length 3.}
@@ -14,6 +14,8 @@ log_lhood_lotka_volterra_lna(theta, y1, y2, times)
 \item{y2}{Observed y2.}
 
 \item{times}{Observed times.}
+
+\item{...}{Arguments to pass to ode solver.}
 }
 \value{
 log-likelihood (numeric)

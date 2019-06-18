@@ -16,8 +16,8 @@ generator_matrix_lotka_volterra_ctmc <- function(theta, y1_min = 0L, y1_max, y2_
 
   sparse_mat_list <- lotka_volterra_generator(theta = theta, y1_min = y1_min, y1_max = y1_max, y2_min = y2_min, y2_max = y2_max)
 
-  Matrix::sparseMatrix(i = sparse_mat_list$rows + 1,
-                       j =  sparse_mat_list$cols + 1,
+  Matrix::sparseMatrix(i = sparse_mat_list$rows,
+                       j =  sparse_mat_list$cols,
                        x = sparse_mat_list$vals,
                        giveCsparse = FALSE
   )
@@ -63,11 +63,31 @@ log_lhood_lotka_volterra_ctmc <- function(theta, y1, y2, times, y1_max, y2_max){
 }
 
 # obtain state of lotka volterra model in terms of flattened (2D -> 1D) variable
-flattened_state_lotka_volterra <- function(y1, y2, y1_min, y1_max, y2_min, y2_max){
+flattened_state_lotka_volterra <- function(y1, y2, y1_min, y1_max, y2_min, y2_max, mat){
+
+  if(missing(y1)){
+    y1 <- mat[,1]
+    y2 <- mat[,2]
+  }
+
+  stopifnot(all( y1 >= y1_min),
+            all( y2 >= y2_min),
+            all( y1 <= y1_max),
+            all( y2 <= y2_max)
+            )
 
   return(
-    (y1 - y1_min)*(y2_max - y2_min + 1) + (y2 - y2_min + 1) + 1 # plus 1 for indices start at 1 in R
+    (y1 - y1_min)*(y2_max - y2_min + 1) + (y2 - y2_min + 1)  # plus 1 for indices start at 1 in R
   )
+
+}
+
+unflattened_state_lotka_volterra <- function(z, y1_min, y1_max, y2_min, y2_max){
+
+  y1 <- floor((z-1)/(y2_max-y2_min+1)) + y1_min
+  y2 <- z - (y1 - y1_min)*(y2_max - y2_min + 1) + y2_min - 1
+
+  return( as.matrix( data.frame(y1 = y1, y2 = y2) ))
 
 }
 
@@ -86,84 +106,79 @@ prob_lotka_volterra_ctmc <- function(flat_init_state, flat_final_state, elapsed_
 
 }
 
-#' Simulate continuous-time Markov chain
+#' Simulate continuous-time Markov chain of Lotka-Volterra model
 #'
-#' @param generator_matrix Square generator matrix (possibly sparse).
-#' @param initial_state_prob Probability vector for intial state of process.
-#' @param initial_state Initial state of process.
+#' @param theta Numeric vector of length 3.
+#' @param y1_min Min for y1, integer, default is 0.
+#' @param y1_max Max for y1, integer.
+#' @param y2_min Min for y2, integer, default is 0.
+#' @param y2_max Max for y2, integer.
+#' @param initial_state_prob Probability matrix (y1, y2) for intial state of process.
+#' @param initial_y1 Initial state of process y1.
+#' @param initial_y2 Initial state of process y2.
 #' @param total_time Total time that CTMC can run for.
 #'
 #' @return Trajectory (integer vector)
 #'
 #' @export
 #'
-simulate_ctmc <- function(generator_matrix, initial_state_prob, initial_state, total_time){
+simulate_lotka_volterra_ctmc <- function(theta, y1_min = 0, y2_min = 0, y1_max, y2_max, initial_y1, initial_y2, initial_state_prob, total_time){
 
-  # set initial state
-  if(missing(initial_state)){
-    if(missing(initial_state_prob)) stop("At least one of initial_state_prob and initial_state must be specified.")
-    states <- sample(x = 1:length(initial_state_prob), prob = initial_state_prob, size = 1)
+  stopifnot(!missing(y1_max),
+            !missing(y2_max),
+            y1_min < y1_max,
+            y2_min < y2_max
+            )
+
+  y1_len <- y1_max - y1_min + 1
+  y2_len <- y2_max - y2_min + 1
+
+  if(missing(initial_y1)){
+
+    stopifnot(all( dim(initial_state_prob) == c(y1_max - y1_min, y2_max - y2_min) ))
+
+    sample_y1 <- sample.int(n = y1_len, size = 1, prob = rowSums(initial_state_prob) ) - 1 + y1_min
+    sample_y2 <- sample.int(n = y2_len, size = 1, prob = initial_state_prob[sample_y1,] )  - 1 + y2_min
+
+    flat_initial_state <-
+      flattened_state_lotka_volterra(y1 = sample_y1,
+                                     y2 = sample_y2,
+                                     y1_min = y1_min,
+                                     y2_min = y2_min,
+                                     y1_max = y1_max,
+                                     y2_max = y2_max)
+
   } else {
-    states <- as.integer(initial_state)
-  }
 
-  times <- 0 # start of time vec
-
-  curr_state <- states
-  curr_time <- times
-  curr_time_rate <- -generator_matrix[curr_state, curr_state]
-
-  while(curr_time < total_time){
-
-    if(curr_time_rate > 0){
-
-      times[length(times) + 1] <- curr_time + stats::rexp(n = 1, rate = -generator_matrix[curr_state, curr_state])
-
-      states[length(states) + 1] <- sample_row_of_sparse_generator(generator_matrix = generator_matrix, i = curr_state)
-
-      curr_state <- states[length(states)]
-      curr_time <- times[length(times)]
-      curr_time_rate <- -generator_matrix[curr_state, curr_state]
-
-    } else {
-
-      # reached holding...
-      times[length(times) + 1] <- curr_time <- total_time
-      states[length(states) + 1] <- curr_state
-
-    }
+    flat_initial_state <-
+      flattened_state_lotka_volterra(y1 = initial_y1,
+                                     y2 = initial_y2,
+                                     y1_min = y1_min,
+                                     y2_min = y2_min,
+                                     y1_max = y1_max,
+                                     y2_max = y2_max)
 
   }
+
+
+  generator_matrix <- generator_matrix_lotka_volterra_ctmc(theta = theta,
+                                                           y1_min = y1_min,
+                                                           y2_min = y2_min,
+                                                           y1_max = y1_max,
+                                                           y2_max = y2_max)
+  sim <- simulate_ctmc(generator_matrix = generator_matrix,
+                       initial_state = flat_initial_state,
+                       total_time = total_time)
 
   return(
-    list(
-      time = times,
-      state = states
+    cbind(
+      unflattened_state_lotka_volterra(
+    sim$state, y1_min = y1_min, y1_max = y1_max,
+    y2_min = y2_min, y2_max = y2_max),
+    time = sim$time
     )
   )
 
-}
-
-sample_row_of_sparse_generator <-  function(generator_matrix, i){
-
-  stopifnot(methods::is(generator_matrix, 'TsparseMatrix'))
-
-  sum_rates <- - generator_matrix[i,i]
-
-  if( abs(sum_rates) < 1e-10 ) return(i)
-
-  in_row_i <- which( generator_matrix@i == ( as.integer(i) - 1L ) )  # 0-index
-
-  # remove diagonal (and any others non-distiguishable from zero)
-  in_row_i <- in_row_i[generator_matrix@x[in_row_i] > 0]
-
-  # if only one option
-  if(length(in_row_i) == 1) return(generator_matrix@j[in_row_i])
-
-  probs_in_row_i <- generator_matrix@x[in_row_i] / sum_rates
-
-  rand_row_j <- sample(x = generator_matrix@j[in_row_i], size = 1, prob = probs_in_row_i)
-
-  return(rand_row_j)
 
 }
+

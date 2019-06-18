@@ -13,6 +13,9 @@ d_dt_lotka_volterra_lna(t, y, theta)
 
 \item{theta}{Parameter vector.}
 }
+\value{
+Derivative vector for LNA approximation with components: (y1, y2, v11, v12, v22).
+}
 \description{
 Time-derivative for LNA of Lotka-Volterra CTMC
 }

@@ -22,9 +22,38 @@ system.time({
   )
 })
 
+theta <- c(0.5,0.1,0.9)
+
+sol <- deSolve::ode(y = c(10,9,0,0,0),
+             times = times,
+             func = d_dt_lotka_volterra_lna,
+             parms = theta,
+             method = "ode45", rtol = 1e-06, atol = 1e-06)
+
+
+y1 <- round(sol[,2]) + rpois(10,1)
+y2 <- round(sol[,3]) + rpois(10,1)
+
+smcdar::log_lhood_lotka_volterra_ctmc(theta = 2*theta+0.7, y1 = y1, y2 = y2, times = times, y1_max = 30, y2_max = 30)
+smcdar::log_lhood_lotka_volterra_lna(theta = theta+0.7, y1 = y1, y2 = y2, times = times, rtol = 1e-02, atol = 1e-02)
+
+
 system.time({
   replicate(n = 100,
-  simulate_ctmc(generator_matrix = G, total_time = 7, initial_state  = 6000)
+     smcdar::log_lhood_lotka_volterra_ctmc(theta = theta, y1 = y1, y2 = y2, times = times, y1_max = 30, y2_max = 30)
   )
 })
 
+system.time({
+  replicate(n = 500,
+     smcdar::log_lhood_lotka_volterra_lna(theta = theta*2, y1 = y1, y2 = y2, times = times, tol = list(rtol = 1e-01, atol = 1e-01))
+  )
+})
+
+
+
+system.time({
+  replicate(n = 100,
+            simulate_ctmc(generator_matrix = G, total_time = 7, initial_state  = 6000)
+  )
+})

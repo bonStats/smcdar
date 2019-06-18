@@ -4,7 +4,7 @@
 #' @param y Population vector.
 #' @param theta Parameter vector.
 #'
-#' @return
+#' @return Derivative vector for LNA approximation with components: (y1, y2, v11, v12, v22).
 #' @export
 d_dt_lotka_volterra_lna <- function(t, y, theta){
 
@@ -59,11 +59,12 @@ d_dt_lotka_volterra_lna <- function(t, y, theta){
 #' @param y1 Observed y1.
 #' @param y2 Observed y2.
 #' @param times Observed times.
+#' @param ... Arguments to pass to ode solver.
 #'
 #' @return log-likelihood (numeric)
 #' @export
 #'
-log_lhood_lotka_volterra_lna <- function(theta, y1, y2, times){
+log_lhood_lotka_volterra_lna <- function(theta, y1, y2, times, ...){
 
   # ode outside of loop?
 
@@ -79,14 +80,15 @@ log_lhood_lotka_volterra_lna <- function(theta, y1, y2, times){
                 times = c(0, d_times[t-1]),
                 func = d_dt_lotka_volterra_lna,
                 parms = theta,
-                method = "ode45", rtol = 1e-06, atol = 1e-06)
+                method = "ode45", ...)
 
     Sigma_t <- matrix(c(osol[2,4],osol[2,5],
                        osol[2,5],osol[2,6]),
                      ncol = 2, byrow = T)
 
     if( det(Sigma_t) <= 0 ){
-      return(-Inf)
+      #return(-Inf) # log-likelihood becomes -Inf
+      next # ignore observation's contribution to log-likelihood
     }
 
     Mu_t <- osol[2,2:3]
