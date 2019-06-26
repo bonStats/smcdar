@@ -27,7 +27,7 @@
     geom_line(aes(x = time, y = level, colour = pop_name)) +
     theme_bw()
 
-  sim <- sim[sim[,"time"] < 30,]
+  sim <- sim[sim[,"time"] < 10,]
 
 #### SMC ####
 
@@ -98,10 +98,10 @@
 
     temp_optim <- optim(par = curr_temp + 0.1, fn = half_ess_temp_obj, lower = 0, upper = 1, method = "Brent")
 
-
     new_temp <- temp_optim$par
 
     # new log posterior
+    prev_log_post <- curr_log_post
     curr_log_post <- papply(partl, fun = log_ann_post_ctmc, temp = new_temp)
     curr_log_post <- replace(x = curr_log_post, is.na(curr_log_post), -Inf)
 
@@ -111,7 +111,7 @@
     # resample
     logw <- weights(partl, log = T)
     groups_logw <- cut(logw, breaks = quantile(logw, probs = seq(0,1, length.out = 5)), include.lowest = T)
-
+    # find and implement strat sampling here.
 
   }
 
