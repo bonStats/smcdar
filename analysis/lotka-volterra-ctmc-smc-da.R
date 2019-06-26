@@ -108,10 +108,8 @@
     # weight update
     weights(partl, log = T) <- weights(partl, log = T) + curr_log_post - prev_log_post
 
-    # resample
-    logw <- weights(partl, log = T)
-    groups_logw <- cut(logw, breaks = quantile(logw, probs = seq(0,1, length.out = 5)), include.lowest = T)
-    # find and implement strat sampling here.
+    # resample (index also returned, to see duplicates.)
+    new_partl <- resample_stratified(partl, num_strata = 10)$particles
 
   }
 
