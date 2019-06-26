@@ -227,6 +227,8 @@ weights.particles <- function(object, log = FALSE){
 #'
 `weights<-.particles` <- function(object, log = FALSE, value){
 
+  if(length(value)!= num_particles(object)) value <- rep(value, length.out = num_particles(object))
+
   if(log){
     log_w <- value
   } else {
@@ -239,3 +241,28 @@ weights.particles <- function(object, log = FALSE){
   return(object)
 
 }
+
+#' Effective sample size
+#'
+#' @param object
+#'
+#' @return ESS
+#' @export
+#'
+ess <- function(object){
+
+  UseMethod("ess")
+
+}
+
+#' @export
+ess.particles <- function(object){
+
+  w <- weights(object)
+
+  # sum(w)^2 / sum(w^2)
+  # sum(w) == 1 always
+  1 / sum(w^2)
+
+}
+
