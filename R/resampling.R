@@ -33,25 +33,11 @@ resample_stratified.numeric <- function(x, num_strata){
 
 }
 
-# resample_stratified.numeric <- function(x, num_strata){
-#   # may not be numerically stable see Appendix A: Parallel resampling in the particle filter
-#   stopifnot( all(x >= 0), all(is.finite(x)), num_strata > 0 )
-#
-#   x_order <- order(x)
-#
-#   N <- length(x)
-#   u <- runif(as.integer(num_strata))
-#   w <- cumsum(x[x_order])
-#   w <- w / w[N]
-#
-#   out <- numeric(length = N)
-#
-#   for(i in 1:N){
-#     r <- N * w[i] / w[N]
-#     k <- min(N, floor(r) + 1)
-#     out[i] <- min(N, floor(r + u[k]) )
-#   }
-#
-#   return(out[x_order])
-#
-# }
+#' @export
+resample_stratified.particles <- function(x, num_strata){
+
+  sample_index <- resample_stratified.numeric(weights(x), num_strata = num_strata)
+
+  select_particles(x, index = sample_index, reweight = T)
+
+}

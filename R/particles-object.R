@@ -266,3 +266,21 @@ ess.particles <- function(object){
 
 }
 
+#' Select new set of particles from old.
+#'
+#' @param object Particle object
+#' @param index Indices to use.
+#' @param reweight Should new particles be assinged a uniform weight?
+#'
+#' @return Particles object.
+#' @export
+#'
+select_particles <- function(object, index, reweight = T){
+
+  object[] <- object[index,]
+
+  if(reweight) weights(object) <- 1
+
+  return(object)
+
+}
