@@ -19,6 +19,7 @@ Imports:
     Rcpp,
     purrr,
     methods,
-    deSolve
+    deSolve,
+    memoise
 LinkingTo: 
     Rcpp

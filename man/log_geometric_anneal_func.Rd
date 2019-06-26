@@ -4,12 +4,14 @@
 \alias{log_geometric_anneal_func}
 \title{Functional for log geometric annealing schedule.}
 \usage{
-log_geometric_anneal_func(log_posterior, log_mu)
+log_geometric_anneal_func(log_posterior, log_mu, use_memoise = F)
 }
 \arguments{
 \item{log_posterior}{A function for the log-posterior.}
 
 \item{log_mu}{A function for the starting distribution.}
+
+\item{use_memoise}{Use memoise on posterior and mu functions?}
 }
 \value{
 Function that outputs annealed log-likelihood.

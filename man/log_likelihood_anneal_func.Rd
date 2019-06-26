@@ -4,12 +4,14 @@
 \alias{log_likelihood_anneal_func}
 \title{Functional for log likelihood annealing schedule.}
 \usage{
-log_likelihood_anneal_func(log_likelihood, log_prior)
+log_likelihood_anneal_func(log_likelihood, log_prior, use_memoise = F)
 }
 \arguments{
 \item{log_likelihood}{A function for the log-likelihood.}
 
 \item{log_prior}{A function for the starting distribution.}
+
+\item{use_memoise}{Use memoise on posterior and mu functions?}
 }
 \value{
 Function that outputs annealed log-likelihood.
