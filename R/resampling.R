@@ -15,7 +15,11 @@ resample_stratified <- function(x, num_strata){
 #' @export
 resample_stratified.numeric <- function(x, num_strata){
   # may not be numerically stable see Appendix A: Parallel resampling in the particle filter
-  stopifnot( all(x >= 0), all(is.finite(x)), num_strata > 0 )
+  stopifnot( all(x >= 0),
+             all(is.finite(x)),
+             num_strata > 0,
+             length(x) >= num_strata
+             )
 
   N <- length(x)
   M <- as.integer(num_strata)
@@ -24,7 +28,7 @@ resample_stratified.numeric <- function(x, num_strata){
   w <- cumsum(x[x_order])
   w <- w / w[N]
 
-  k <- sample.int(n = M, replace = T)
+  k <- c( rep(1:M, times = N %/% M), sample.int(n = N %% M, replace = T) )
   u <- ( k - 1 + runif(N) ) / M
 
   out <- rowSums(outer(u, w, ">=")) + 1
@@ -38,6 +42,44 @@ resample_stratified.particles <- function(x, num_strata){
 
   sample_index <- resample_stratified.numeric(weights(x), num_strata = num_strata)
 
-  select_particles(x, index = sample_index, reweight = T)
+  list(
+    particles = select_particles(x, index = sample_index, reweight = T),
+    index = sample_index
+    )
 
 }
+
+#' Generic multinomial resample
+#'
+#' @param x Object to resample elements of.
+#'
+#' @return Resampled object
+#'
+#' @export
+resample_multinomial <- function(x){
+
+  UseMethod("resample_multinomial")
+
+}
+
+#' @export
+resample_multinomial.numeric <- function(x){
+
+  stopifnot( all(x >= 0), all(is.finite(x)) )
+
+  sample.int(n = length(x), replace = T, prob = x)
+
+}
+
+#' @export
+resample_multinomial.particles <- function(x){
+
+  sample_index <- resample_multinomial.numeric(weights(x))
+
+  list(
+    particles = select_particles(x, index = sample_index, reweight = T),
+    index = sample_index
+  )
+
+}
+

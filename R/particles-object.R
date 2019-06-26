@@ -277,6 +277,8 @@ ess.particles <- function(object){
 #'
 select_particles <- function(object, index, reweight = T){
 
+  stopifnot(length(index) == num_particles(object))
+
   object[] <- object[index,]
 
   if(reweight) weights(object) <- 1
