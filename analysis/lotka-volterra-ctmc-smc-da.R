@@ -108,8 +108,12 @@
     # weight update
     weights(partl, log = T) <- weights(partl, log = T) + curr_log_post - prev_log_post
 
-    # resample (index also returned, to see duplicates.)
-    new_partl <- resample_stratified(partl, num_strata = 10)$particles
+    ## resample (index also returned, to see duplicates.)
+    rs_obj <- resample_stratified(partl, num_strata = 10)
+    rs_partl <- rs_obj$particles
+
+    ## refresh
+    pr_partl <- mvn_jitter(particles = rs_partl, step_scale = 0.01, var = var(partl))
 
   }
 
