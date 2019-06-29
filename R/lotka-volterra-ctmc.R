@@ -100,7 +100,12 @@ prob_lotka_volterra_ctmc <- function(flat_init_state, flat_final_state, elapsed_
 
   if(package == "expoRkit"){
 
-    res <- expoRkit::expv(x = generator_matrix, v = ffinal, t = elapsed_time, Markov = T, transpose = F)[flat_init_state,]
+    res <- try(
+      expoRkit::expv(x = generator_matrix, v = ffinal, t = elapsed_time, Markov = T, transpose = F)[flat_init_state,],
+      silent = T
+    )
+
+    if(class(res) == "try-error") res <- 0
 
   } else {
 
