@@ -26,14 +26,14 @@ resample_stratified.numeric <- function(x, num_strata){
 
   x_order <- order(x)
   w <- cumsum(x[x_order])
-  w <- w / w[N]
+  w <- w / tail(w,1)
 
-  k <- c( rep(1:M, times = N %/% M), sample.int(n = N %% M, replace = T) )
+  k <- c( rep(1:M, times = N %/% M), sample(x = 1:M, size = N %% M, replace = T) )
   u <- ( k - 1 + runif(N) ) / M
 
-  out <- rowSums(outer(u, w, ">=")) + 1
+  smpl <- rowSums(outer(u, w, ">=")) +1
 
-  return(out[x_order])
+  return(x_order[smpl])
 
 }
 
