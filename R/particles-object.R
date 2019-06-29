@@ -286,3 +286,31 @@ select_particles <- function(object, index, reweight = T){
   return(object)
 
 }
+
+#' Replace (subset of) old set of particles with (subset of) new.
+#'
+#' Replaces the index of old particles with index of new particles. Weights do not update.
+#'
+#' @param new_particles New particle object
+#' @param old_particles Old particle object
+#' @param index Indices to use.
+#' @param reweight Should new particles be assinged a uniform weight?
+#'
+#' @return Particles object.
+#' @export
+#'
+replace_particles <- function(new_particles, old_particles, index, reweight = T){
+
+  stopifnot(num_particles(new_particles) == num_particles(old_particles),
+            num_particles(new_particles) == length(index)
+            )
+
+  out_particles <- old_particles
+
+  out_particles[index,] <- new_particles[index,]
+
+  if(reweight) weights(out_particles) <- 1
+
+  return(out_particles)
+
+}
