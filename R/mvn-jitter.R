@@ -18,6 +18,7 @@ mvn_jitter <- function(particles, step_scale = 1, var = NULL, prec = NULL, var_c
   # only one to be specified...
   stopifnot( (is.null(var) + is.null(prec) + is.null(var_chol) + is.null(prec_chol) ) == 3)
 
+  stopifnot(length(step_scale) == 1 | length(step_scale) == num_particles(particles))
 
   if(!is.null(var_chol))  stopifnot( is_upper_triangular_matrix(var_chol) )
 
@@ -34,7 +35,7 @@ mvn_jitter <- function(particles, step_scale = 1, var = NULL, prec = NULL, var_c
 
     stopifnot( k == nrow(var_chol) )
 
-    jit <- matrix(z, n, k) %*% (step_scale * var_chol)
+    jit <- step_scale * matrix(z, n, k) %*% var_chol
 
   } else if( !is.null(prec) | !is.null(prec_chol) ){
 
@@ -42,7 +43,7 @@ mvn_jitter <- function(particles, step_scale = 1, var = NULL, prec = NULL, var_c
 
     stopifnot( k == nrow(prec_chol) )
 
-    jit <- t( backsolve(prec_chol / step_scale, matrix(z, k, n)) )
+    jit <- step_scale * t( backsolve(prec_chol, matrix(z, k, n)) )
 
   }
 
