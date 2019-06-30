@@ -75,14 +75,16 @@
     )
   }
 
-  mh_step <- function(new_particles, old_particles, temp){
+  mh_step <- function(new_particles, old_particles, var, temp){
     # using MVN (symmetric kernel)
     accept <- exp(
       papply(new_particles, fun = log_ann_post_ctmc, temp = temp) -
       papply(old_particles, fun = log_ann_post_ctmc, temp = temp)
     ) > runif(num_particles(new_particles))
 
-    dist <- sqrt( rowSums( (new_particles - old_particles)^2) ) * accept
+    maha_dist <- papply(new_particles - old_particles, function(x){t(x) %*% solve(var, x)})
+
+    dist <- sqrt( maha_dist ) * accept
 
     return(list(
       accept = accept,
@@ -104,7 +106,7 @@
   }
 
   ## setup
-  num_p <- 200
+  num_p <- 20
   temps <- 0
   step_scale_set <- c(0.3, 0.5, 0.7, 0.8, 0.9)
   ttime <- 0 # total time
@@ -154,7 +156,7 @@
     ## refresh
     sample_step_scale <- step_scale_set[sample.int(num_particles(resampled_partl)) %% length(step_scale_set) + 1]
     proposed_partl <- mvn_jitter(particles = resampled_partl, step_scale = sample_step_scale, var = mvn_var$cov) # jittered particles
-    mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, temp = tail(temps,1) )
+    mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, var = mvn_var$cov, temp = tail(temps,1) )
     # update particles for 1 iteration
     curr_partl <- replace_particles(new_particles = proposed_partl, old_particles = resampled_partl, index = mh_res$accept)
     best_step_scale <- best_step_scale_dist(step_scale = sample_step_scale, dist = mh_res$dist)
@@ -163,7 +165,7 @@
     # update additional times with best_step_scale
     for(j in 1:2){
       proposed_partl <- mvn_jitter(particles = curr_partl, step_scale = best_step_scale$step_scale, var = mvn_var$cov)
-      mh_res <- mh_step(new_particles = proposed_partl, old_particles = curr_partl, temp = tail(temps,1) )
+      mh_res <- mh_step(new_particles = proposed_partl, old_particles = curr_partl, var = mvn_var$cov, temp = tail(temps,1) )
       curr_partl <- replace_particles(new_particles = proposed_partl, old_particles = curr_partl, index = mh_res$accept)
       accept_prop <- c(accept_prop, mean(mh_res$accept))
     }
