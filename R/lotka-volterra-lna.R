@@ -86,9 +86,13 @@ log_lhood_lotka_volterra_lna <- function(theta, y1, y2, times, ...){
                        osol[2,5],osol[2,6]),
                      ncol = 2, byrow = T)
 
-    if( det(Sigma_t) <= 0 ){
-      #return(-Inf) # log-likelihood becomes -Inf
-      next # ignore observation's contribution to log-likelihood
+    if( any(is.na(Sigma_t)) ){ # infrequent
+      return(-Inf)
+    }
+
+    if( det(Sigma_t) <= 0 ){ # fairly frequent
+      return(-Inf) # log-likelihood becomes -Inf
+      #next # ignore observation's contribution to log-likelihood
     }
 
     Mu_t <- osol[2,2:3]
