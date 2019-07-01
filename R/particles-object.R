@@ -266,7 +266,7 @@ ess.particles <- function(object){
 
 }
 
-#' Select new set of particles from old.
+#' Select new set of particles from old, reweight.
 #'
 #' @param object Particle object
 #' @param index Indices to use.
@@ -275,7 +275,7 @@ ess.particles <- function(object){
 #' @return Particles object.
 #' @export
 #'
-select_particles <- function(object, index, reweight = T){
+select_reweight_particles <- function(object, index, reweight = T){
 
   stopifnot(length(index) == num_particles(object))
 
@@ -312,5 +312,27 @@ replace_particles <- function(new_particles, old_particles, index, reweight = T)
   if(reweight) weights(out_particles) <- 1
 
   return(out_particles)
+
+}
+
+#' Extract names of elements in each particle.
+#'
+#' @param x Particle.
+#' @param ... Not in use.
+#'
+#' @export
+names.particles <- function(x, ...){
+
+  attr(x,"components")$nam
+
+}
+
+#' @export
+as.list.particles <- function(x, ...){
+
+  stats::setNames(
+    lapply( names(x), function(nm) x[[nm]]),
+    nm = names(x)
+  )
 
 }

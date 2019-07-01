@@ -43,7 +43,7 @@ resample_stratified.particles <- function(x, num_strata){
   sample_index <- resample_stratified.numeric(weights(x), num_strata = num_strata)
 
   list(
-    particles = select_particles(x, index = sample_index, reweight = T),
+    particles = select_reweight_particles(x, index = sample_index, reweight = T),
     index = sample_index
     )
 
@@ -77,7 +77,7 @@ resample_multinomial.particles <- function(x){
   sample_index <- resample_multinomial.numeric(weights(x))
 
   list(
-    particles = select_particles(x, index = sample_index, reweight = T),
+    particles = select_reweight_particles(x, index = sample_index, reweight = T),
     index = sample_index
   )
 
