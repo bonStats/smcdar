@@ -338,7 +338,8 @@ smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F,
   return(list(
     particles = curr_partl,
     total_time = ttime,
-    temps = temps
+    temps = temps,
+    log_ann_post_ctmc_da = log_ann_post_ctmc_da
   ))
 
 }
