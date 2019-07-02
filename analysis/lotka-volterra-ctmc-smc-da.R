@@ -104,11 +104,11 @@
     )
   }
 
-  mh_step <- function(new_particles, old_particles, var, temp, type){
+  mh_step <- function(new_particles, old_particles, var, temp, loglike, type){
     # using MVN (symmetric kernel)
     accept <- exp(
-      papply(new_particles, fun = log_ann_post_ctmc_da, temp = temp, type = type) -
-      papply(old_particles, fun = log_ann_post_ctmc_da, temp = temp, type = type)
+      papply(new_particles, fun = loglike, temp = temp, type = type) -
+      papply(old_particles, fun = loglike, temp = temp, type = type)
     ) > runif(num_particles(new_particles))
 
     maha_dist <- papply(new_particles - old_particles, function(x){t(x) %*% solve(var, x)})
@@ -123,7 +123,7 @@
 
   }
 
-  mh_da_step <- function(new_particles, old_particles, var, temp, pre_trans = identity){
+  mh_da_step <- function(new_particles, old_particles, var, temp, loglike, pre_trans = identity){
     # using MVN (symmetric kernel)
 
     trans_new_particles <- t(papply(new_particles, pre_trans))
@@ -131,20 +131,20 @@
 
     accept_1 <- exp(
 
-      papply(trans_new_particles, fun = log_ann_post_ctmc_da, type = "approx_likelihood", temp = temp) *
-        papply(new_particles, fun = log_ann_post_ctmc_da, type = "prior")  -
+      papply(trans_new_particles, fun = loglike, type = "approx_likelihood", temp = temp) *
+        papply(new_particles, fun = loglike, type = "prior")  -
 
-        papply(trans_old_particles, fun = log_ann_post_ctmc_da, type = "approx_likelihood", temp = temp) *
-        papply(old_particles, fun = log_ann_post_ctmc_da, type = "prior")
+        papply(trans_old_particles, fun = loglike, type = "approx_likelihood", temp = temp) *
+        papply(old_particles, fun = loglike, type = "prior")
 
     ) > runif(num_particles(new_particles))
 
     accept_2 <- exp(
-      papply(new_particles[accept_1,,drop = F], fun = log_ann_post_ctmc_da, type = "full_likelihood", temp = temp) -
-        papply(old_particles[accept_1,,drop = F], fun = log_ann_post_ctmc_da, type = "full_likelihood", temp = temp) -
+      papply(new_particles[accept_1,,drop = F], fun = loglike, type = "full_likelihood", temp = temp) -
+        papply(old_particles[accept_1,,drop = F], fun = loglike, type = "full_likelihood", temp = temp) -
         (
-          papply(trans_new_particles[accept_1,,drop = F], fun = log_ann_post_ctmc_da, type = "approx_likelihood", temp = temp) -
-            papply(trans_old_particles[accept_1,,drop = F], fun = log_ann_post_ctmc_da, type = "approx_likelihood", temp = temp)
+          papply(trans_new_particles[accept_1,,drop = F], fun = loglike, type = "approx_likelihood", temp = temp) -
+            papply(trans_old_particles[accept_1,,drop = F], fun = loglike, type = "approx_likelihood", temp = temp)
         )
     ) > runif(sum(accept_1))
 
@@ -163,26 +163,29 @@
 
   }
 
-  optimise_pre_approx_llhood_transformation <- function(b_s_start, log_theta, sample_size){
-
-    rsample <- sample.int(nrow(log_theta), size = sample_size)
-    use_log_theta <- log_theta[rsample,]
+  optimise_pre_approx_llhood_transformation <- function(b_s_start, log_theta, loglike){
 
     #log_theta is matrix
     # should only send values of log_like that have been cached already
-    true_llhood <- apply(use_log_theta, MARGIN = 1, log_ann_post_ctmc_da, type = "full_likelihood")
+    true_llhood <- apply(log_theta, MARGIN = 1, loglike, type = "full_likelihood")
+
+    which_upper <- which( true_llhood > quantile(true_llhood, probs = 0.2) )
+
+    use_index <- sample(which_upper, size = 20, replace = FALSE)
+
+
 
     topt <- function(b_s){
 
-      b_mat <- matrix(b_s[1:3], ncol = 3, nrow = nrow(use_log_theta), byrow = T)
-      s_mat <- matrix(b_s[4:6], ncol = 3, nrow = nrow(use_log_theta), byrow = T)
+      b_mat <- matrix(b_s[1:3], ncol = 3, nrow = length(use_index), byrow = T)
+      s_mat <- matrix(b_s[4:6], ncol = 3, nrow = length(use_index), byrow = T)
 
-      llhood_approx <- apply((use_log_theta - b_mat)/exp(s_mat), MARGIN = 1, log_ann_post_ctmc_da, type = "approx_likelihood")
+      llhood_approx <- apply((log_theta[use_index,] - b_mat)/exp(s_mat), MARGIN = 1, loglike, type = "approx_likelihood")
 
       keep_ll <- is.finite(llhood_approx)
 
       sum(
-        (llhood_approx[keep_ll] - true_llhood[keep_ll])^2
+        (llhood_approx[keep_ll] - true_llhood[use_index[keep_ll]])^2
       )
 
     }
@@ -255,7 +258,7 @@ smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F,
 
     temp_optim <- optim(par = (tail(temps,1) + 1)/2, fn = half_ess_temp_obj, lower = tail(temps,1), upper = 1, method = "Brent")
 
-    temps <- c( temps, ifelse(temp_optim$par > 0.95, 1, temp_optim$par))
+    temps <- c( temps, ifelse(temp_optim$par > 0.98, 1, temp_optim$par))
 
     # new log posterior
     prev_log_post <- curr_log_post
@@ -277,14 +280,14 @@ smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F,
 
     if(use_da){
       # pre transformation
-      partial_optim <- optimise_pre_approx_llhood_transformation(b_s_start = b_s_start, log_theta = environment(log_ann_post_ctmc_da)$unique_x, sample_size = 20)
-      optima_matrix <- rbind(optima_matrix, partial_optim$par)
-      pre_trans_pars <- colMeans(optima_matrix)
-      pre_trans <- function(x){ (x - pre_trans_pars[1:3]) / exp(pre_trans_pars[4:6]) }
-      b_s_start <- pre_trans_pars
-      mh_res <- mh_da_step(new_particles = proposed_partl, old_particles = resampled_partl, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans)
+      partial_optim <- optimise_pre_approx_llhood_transformation(b_s_start = b_s_start, log_theta = environment(log_ann_post_ctmc_da)$unique_x, loglike = log_ann_post_ctmc_da)
+      #optima_matrix <- rbind(optima_matrix, partial_optim$par)
+      #pre_trans_pars <- colMeans(optima_matrix)
+      pre_trans <- function(x){ (x - partial_optim$par[1:3]) / exp(partial_optim$par[4:6]) }
+      b_s_start <- partial_optim$par
+      mh_res <- mh_da_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans)
     } else {
-      mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, var = mvn_var$cov, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
+      mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
     }
 
     # update particles for 1 iteration
@@ -298,9 +301,9 @@ smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F,
       proposed_partl <- mvn_jitter(particles = curr_partl, step_scale = best_step_scale$step_scale, var = mvn_var$cov)
       #mh_res <- mh_func(new_particles = proposed_partl, old_particles = curr_partl, var = mvn_var$cov, temp = tail(temps,1) )
       if(use_da){
-        mh_res <- mh_da_step(new_particles = proposed_partl, old_particles = resampled_partl, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans)
+        mh_res <- mh_da_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans)
       } else {
-        mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, var = mvn_var$cov, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
+        mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
       }
       curr_partl <- replace_particles(new_particles = proposed_partl, old_particles = curr_partl, index = mh_res$accept)
       accept_prop <- c(accept_prop, mean(mh_res$accept))
