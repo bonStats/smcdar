@@ -163,6 +163,58 @@
 
   }
 
+  mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pre_trans = identity){
+    # using MVN (symmetric kernel)
+
+    # uses http://aimsciences.org//article/doi/10.3934/fods.2019005
+    # to give every particle some chance of progressing
+    c_const <- 0.1 # how to choose?
+    d_const <- 2
+    log_b_const <- ( 1 / ( d_const - 1) ) * log(c_const)
+
+    trans_new_particles <- t(papply(new_particles, pre_trans))
+    trans_old_particles <- t(papply(old_particles, pre_trans))
+
+    # approximate likelihood threshold (surrogate model)
+    log_rho_tilde_1 <-
+      papply(trans_new_particles, fun = loglike, type = "approx_likelihood", temp = temp) *
+      papply(new_particles, fun = loglike, type = "prior")  -
+
+      papply(trans_old_particles, fun = loglike, type = "approx_likelihood", temp = temp) *
+      papply(old_particles, fun = loglike, type = "prior")
+
+
+    log_rho_1 <- pmin( -log_b_const, pmax( log_b_const, log_rho_tilde_1 ) )
+
+    accept_1 <- exp(log_rho_1) > runif(num_particles(new_particles))
+
+    log_rho_tilde_2 <-
+      papply(new_particles[accept_1,,drop = F], fun = loglike, type = "full_likelihood", temp = temp) -
+      papply(old_particles[accept_1,,drop = F], fun = loglike, type = "full_likelihood", temp = temp) -
+      (
+        papply(trans_new_particles[accept_1,,drop = F], fun = loglike, type = "approx_likelihood", temp = temp) -
+          papply(trans_old_particles[accept_1,,drop = F], fun = loglike, type = "approx_likelihood", temp = temp)
+      )
+
+    rho_2 <- exp(log_rho_tilde_1[accept_1] + log_rho_tilde_2 - log_rho_1[accept_1]) # only for accepted particles
+
+    accept_2 <- rho_2 > runif(sum(accept_1))
+
+    accept <- accept_1
+    accept[accept_1] <- accept_2
+
+    maha_dist <- papply(new_particles - old_particles, function(x){t(x) %*% solve(var, x)})
+
+    dist <- sqrt( maha_dist ) * accept
+
+    return(list(
+      pre_accept = accept_1,
+      accept = accept,
+      dist = dist
+    ))
+
+  }
+
   optimise_pre_approx_llhood_transformation <- function(b_s_start, log_theta, loglike){
 
     #log_theta is matrix
@@ -353,7 +405,7 @@ f_pars <-  list(
   b_s_start = c(0,0,0,0,0,0)
 )
 
-
+# list2env(f_pars, envir = globalenv()); use_da = T; use_approx = F
 
 smc_da <- with(f_pars, smc_lotka_volterra_da(
     use_da = T, use_approx = F,
