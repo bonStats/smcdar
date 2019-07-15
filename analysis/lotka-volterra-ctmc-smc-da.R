@@ -131,11 +131,12 @@
 
     accept_1 <- exp(
 
-      papply(trans_new_particles, fun = loglike, type = "approx_likelihood", temp = temp) *
+      papply(trans_new_particles, fun = loglike, type = "approx_likelihood", temp = temp) +
         papply(new_particles, fun = loglike, type = "prior")  -
-
-        papply(trans_old_particles, fun = loglike, type = "approx_likelihood", temp = temp) *
+        (
+        papply(trans_old_particles, fun = loglike, type = "approx_likelihood", temp = temp) +
         papply(old_particles, fun = loglike, type = "prior")
+        )
 
     ) > runif(num_particles(new_particles))
 
@@ -168,7 +169,7 @@
 
     # uses http://aimsciences.org//article/doi/10.3934/fods.2019005
     # to give every particle some chance of progressing
-    c_const <- 0.1 # how to choose?
+    c_const <- 0.01 # how to choose?
     d_const <- 2
     log_b_const <- ( 1 / ( d_const - 1) ) * log(c_const)
 
@@ -177,13 +178,12 @@
 
     # approximate likelihood threshold (surrogate model)
     log_rho_tilde_1 <-
-      papply(trans_new_particles, fun = loglike, type = "approx_likelihood", temp = temp) *
+      papply(trans_new_particles, fun = loglike, type = "approx_likelihood", temp = temp) +
       papply(new_particles, fun = loglike, type = "prior")  -
-
-      papply(trans_old_particles, fun = loglike, type = "approx_likelihood", temp = temp) *
+      (
+      papply(trans_old_particles, fun = loglike, type = "approx_likelihood", temp = temp) +
       papply(old_particles, fun = loglike, type = "prior")
-
-
+      )
     log_rho_1 <- pmin( -log_b_const, pmax( log_b_const, log_rho_tilde_1 ) )
 
     accept_1 <- exp(log_rho_1) > runif(num_particles(new_particles))
@@ -337,7 +337,7 @@ smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F,
       #pre_trans_pars <- colMeans(optima_matrix)
       pre_trans <- function(x){ (x - partial_optim$par[1:3]) / exp(partial_optim$par[4:6]) }
       b_s_start <- partial_optim$par
-      mh_res <- mh_da_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans)
+      mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans)
     } else {
       mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
     }
@@ -353,7 +353,7 @@ smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F,
       proposed_partl <- mvn_jitter(particles = curr_partl, step_scale = best_step_scale$step_scale, var = mvn_var$cov)
       #mh_res <- mh_func(new_particles = proposed_partl, old_particles = curr_partl, var = mvn_var$cov, temp = tail(temps,1) )
       if(use_da){
-        mh_res <- mh_da_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans)
+        mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans)
       } else {
         mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
       }
@@ -432,3 +432,6 @@ smc_approx <- with(f_pars, smc_lotka_volterra_da(
   )
 
 sapply(list(smc_da,smc_full,smc_approx), FUN = getElement, name = "total_time")
+
+# target ESJD/cost
+#
