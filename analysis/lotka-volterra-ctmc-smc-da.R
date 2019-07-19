@@ -221,11 +221,18 @@
     # should only send values of log_like that have been cached already
     true_llhood <- apply(log_theta, MARGIN = 1, loglike, type = "full_likelihood")
 
-    which_upper <- which( true_llhood > quantile(true_llhood, probs = 0.2) )
+    if(missing(b_s_start)){
+
+      approx_llhood <-apply(log_theta, MARGIN = 1, loglike, type = "approx_likelihood")
+      mode_true <- which.max(true_llhood)
+      mode_approx <- which.max(approx_llhood)
+      b_s_start <- c(log_theta[mode_approx,] - log_theta[mode_true,],1,1,1)
+
+    }
+
+    which_upper <- which( true_llhood > quantile(true_llhood, probs = 0.1) )
 
     use_index <- sample(which_upper, size = 20, replace = FALSE)
-
-
 
     topt <- function(b_s){
 
@@ -236,17 +243,16 @@
 
       keep_ll <- is.finite(llhood_approx)
 
-      sum(
-        (llhood_approx[keep_ll] - true_llhood[use_index[keep_ll]])^2
+      # chi-square discrepancy
+      sum( # p * (p/q - 1)^2
+        true_llhood[use_index[keep_ll]] * (exp(llhood_approx[keep_ll] - true_llhood[use_index[keep_ll]]) - 1)^2
       )
 
     }
 
-    optim(par = b_s_start, fn = topt, control = list(maxit = 10))
+    optim(par = b_s_start, fn = topt, control = list(maxit = 5))
 
   }
-
-
 
   best_step_scale_dist <- function(step_scale, dist){
 
@@ -332,7 +338,11 @@ smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F,
 
     if(use_da){
       # pre transformation
-      partial_optim <- optimise_pre_approx_llhood_transformation(b_s_start = b_s_start, log_theta = environment(log_ann_post_ctmc_da)$unique_x, loglike = log_ann_post_ctmc_da)
+      if(tail(temps,1) < 0.1){
+        partial_optim <- optimise_pre_approx_llhood_transformation(log_theta = environment(log_ann_post_ctmc_da)$unique_x, loglike = log_ann_post_ctmc_da)
+      } else {
+        partial_optim <- optimise_pre_approx_llhood_transformation(b_s_start = b_s_start, log_theta = environment(log_ann_post_ctmc_da)$unique_x, loglike = log_ann_post_ctmc_da)
+      }
       #optima_matrix <- rbind(optima_matrix, partial_optim$par)
       #pre_trans_pars <- colMeans(optima_matrix)
       pre_trans <- function(x){ (x - partial_optim$par[1:3]) / exp(partial_optim$par[4:6]) }
@@ -433,5 +443,12 @@ smc_approx <- with(f_pars, smc_lotka_volterra_da(
 
 sapply(list(smc_da,smc_full,smc_approx), FUN = getElement, name = "total_time")
 
+# CHRIS:
+# double annealing?
+# check and see if subsampling the lotka-volterra approximation is a big speed up
+# other models with high gains from approx likelihood
+
+# UPDATES:
 # target ESJD/cost
-#
+# could make optimisation for approx likelihood only run when approx vs full posterior discrepancy is beyond some cutoff?
+# check and see if subsampling the lotka-volterra approximation is a big speed up
