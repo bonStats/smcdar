@@ -4,12 +4,14 @@
 \alias{weights<-}
 \title{Set  weights}
 \usage{
-weights(object, ...) <- value
+weights(object, ..., log) <- value
 }
 \arguments{
 \item{object}{Object.}
 
 \item{...}{Other parameters.}
+
+\item{log}{Are log-weights being used?}
 
 \item{value}{New weights.}
 }

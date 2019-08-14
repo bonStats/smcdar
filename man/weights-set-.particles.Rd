@@ -4,10 +4,12 @@
 \alias{weights<-.particles}
 \title{Set particle weights}
 \usage{
-\method{weights}{particles}(object, log = FALSE) <- value
+\method{weights}{particles}(object, ..., log = FALSE) <- value
 }
 \arguments{
 \item{object}{Particles object.}
+
+\item{...}{Other parameters.}
 
 \item{log}{Input is log weights?}
 

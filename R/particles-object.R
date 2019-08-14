@@ -186,13 +186,14 @@ get_comp_details <- function(pcomp, i){
 #' Get particle weights
 #'
 #' @param object Particles object.
+#' @param ... Other parameters.
 #' @param log Return log weights?
 #' @param normalise Normalise weights? Sum to one.
 #'
 #' @return Weights
 #' @export
 #'
-weights.particles <- function(object, log = FALSE, normalise = TRUE){
+weights.particles <- function(object, ..., log = FALSE, normalise = TRUE){
 
   log_w <- attr(object, "log_weights")
 
@@ -210,10 +211,11 @@ weights.particles <- function(object, log = FALSE, normalise = TRUE){
 #'
 #' @param object Object.
 #' @param ... Other parameters.
+#' @param log Are log-weights being used?
 #' @param value New weights.
 #'
 #' @export
-`weights<-` <- function(object, ..., value){
+`weights<-` <- function(object, ..., log, value){
 
   UseMethod("weights<-")
 
@@ -223,12 +225,13 @@ weights.particles <- function(object, log = FALSE, normalise = TRUE){
 #' Set particle weights
 #'
 #' @param object Particles object.
+#' @param ... Other parameters.
 #' @param value New particle weights.
 #' @param log Input is log weights?
 #'
 #' @export
 #'
-`weights<-.particles` <- function(object, log = FALSE, value){
+`weights<-.particles` <- function(object, ..., log = FALSE, value){
 
   if(length(value) != num_particles(object)) value <- rep(value, length.out = num_particles(object))
 
@@ -245,9 +248,10 @@ weights.particles <- function(object, log = FALSE, normalise = TRUE){
 
 }
 
+
 #' Effective sample size
 #'
-#' @param object
+#' @param object Object to return weights for.
 #'
 #' @return ESS
 #' @export

@@ -5,7 +5,7 @@
 #' @param particles Particle object.
 #' @param fun Function to apply.
 #' @param comp_time Record time taken for comutation? Logical.
-#' @param ...
+#' @param ... Other arguments to pass to \code{fun}.
 #'
 #' @return Function evaluated at each row.
 #' @export

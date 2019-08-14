@@ -13,7 +13,7 @@ papply(particles, fun, comp_time = F, ...)
 
 \item{comp_time}{Record time taken for comutation? Logical.}
 
-\item{...}{}
+\item{...}{Other arguments to pass to \code{fun}.}
 }
 \value{
 Function evaluated at each row.

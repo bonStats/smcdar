@@ -4,12 +4,16 @@
 \alias{weights.particles}
 \title{Get particle weights}
 \usage{
-\method{weights}{particles}(object, log = FALSE)
+\method{weights}{particles}(object, ..., log = FALSE, normalise = TRUE)
 }
 \arguments{
 \item{object}{Particles object.}
 
+\item{...}{Other parameters.}
+
 \item{log}{Return log weights?}
+
+\item{normalise}{Normalise weights? Sum to one.}
 }
 \value{
 Weights

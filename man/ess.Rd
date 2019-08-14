@@ -7,7 +7,7 @@
 ess(object)
 }
 \arguments{
-\item{object}{}
+\item{object}{Object to return weights for.}
 }
 \value{
 ESS
