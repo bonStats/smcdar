@@ -40,7 +40,7 @@ particles <- function(..., weights = 1){
 
   class(prts_mat) <- c("particles","matrix")
   attr(prts_mat, "components") <- comp_attr
-  attr(prts_mat, "log_weights") <- log_weights_normalise(unn_log_weights)
+  attr(prts_mat, "log_weights") <- unn_log_weights
   return(prts_mat)
 
 }
@@ -187,13 +187,16 @@ get_comp_details <- function(pcomp, i){
 #'
 #' @param object Particles object.
 #' @param log Return log weights?
+#' @param normalise Normalise weights? Sum to one.
 #'
 #' @return Weights
 #' @export
 #'
-weights.particles <- function(object, log = FALSE){
+weights.particles <- function(object, log = FALSE, normalise = TRUE){
 
   log_w <- attr(object, "log_weights")
+
+  if(normalise) log_w <- log_weights_normalise(log_w)
 
   if(log){
     log_w
@@ -227,7 +230,7 @@ weights.particles <- function(object, log = FALSE){
 #'
 `weights<-.particles` <- function(object, log = FALSE, value){
 
-  if(length(value)!= num_particles(object)) value <- rep(value, length.out = num_particles(object))
+  if(length(value) != num_particles(object)) value <- rep(value, length.out = num_particles(object))
 
   if(log){
     log_w <- value
@@ -236,7 +239,7 @@ weights.particles <- function(object, log = FALSE){
     log_w <- log(value)
   }
 
-  attr(object, "log_weights") <- log_weights_normalise(log_w)
+  attr(object, "log_weights") <- log_w
 
   return(object)
 
@@ -258,7 +261,7 @@ ess <- function(object){
 #' @export
 ess.particles <- function(object){
 
-  w <- weights(object)
+  w <- weights(object) #autmatically normalises
 
   # sum(w)^2 / sum(w^2)
   # sum(w) == 1 always
