@@ -4,12 +4,14 @@
 \alias{papply}
 \title{Apply function to all particles}
 \usage{
-papply(particles, fun, ...)
+papply(particles, fun, comp_time = F, ...)
 }
 \arguments{
 \item{particles}{Particle object.}
 
 \item{fun}{Function to apply.}
+
+\item{comp_time}{Record time taken for comutation? Logical.}
 
 \item{...}{}
 }
