@@ -54,11 +54,14 @@
     ) #* exp(log_theta) # Don't need change of var since this is the likelihood?
   }
 
+  #thin_i <- 1:floor(nrow(sim) / 4)
+  thin_i <- 1:nrow(sim)
+
   log_like_approx <- function(log_theta){
     log_lhood_lotka_volterra_lna(
       theta = exp(log_theta),
-      y1 = sim[,"y1"], y2 = sim[,"y2"],
-      times = sim[,"time"]
+      y1 = sim[thin_i,"y1"], y2 = sim[thin_i,"y2"],
+      times = sim[thin_i,"time"]
     ) #* exp(log_theta) # Don't need change of var since this is the likelihood?
   }
 
@@ -78,7 +81,7 @@
 
     unique_x <- NULL
 
-    f <- function(x, temp = 1, type = "full_posterior", ...){
+    f <- function(x, temp = 1, lh_trans = identity, type = "full_posterior", ...){
 
       if(type %in% c("full_posterior", "full_approx_lhood_ratio", "full_likelihood", "full_posterior")){ # if will evaulate true likelihood
         new_unique_x <- rbind(unique_x, x) # matrix
@@ -86,9 +89,9 @@
       }
 
       switch(type,
-        approx_posterior = temp * mem_log_likelihood_approx(x, ...) + mem_log_prior(x, ...),
-        full_approx_lhood_ratio = temp * (  mem_log_likelihood(x, ...) - mem_log_likelihood_approx(x, ...) ),
-        approx_likelihood = temp * mem_log_likelihood_approx(x, ...),
+        approx_posterior = temp * mem_log_likelihood_approx(lh_trans(x), ...) + mem_log_prior(x, ...),
+        full_approx_lhood_ratio = temp * (  mem_log_likelihood(x, ...) - mem_log_likelihood_approx(lh_trans(x), ...) ),
+        approx_likelihood = temp * mem_log_likelihood_approx(lh_trans(x), ...),
         full_likelihood =  temp * mem_log_likelihood(x, ...),
         full_posterior = temp * mem_log_likelihood(x, ...) + mem_log_prior(x, ...),
         prior =  mem_log_prior(x, ...)
@@ -106,9 +109,12 @@
 
   mh_step <- function(new_particles, old_particles, var, temp, loglike, type){
     # using MVN (symmetric kernel)
+
+    new_loglike_type <- papply(new_particles, fun = loglike, temp = temp, type = type, comp_time = T)
+    old_loglike_type <- papply(old_particles, fun = loglike, temp = temp, type = type, comp_time = F)
+
     accept <- exp(
-      papply(new_particles, fun = loglike, temp = temp, type = type) -
-      papply(old_particles, fun = loglike, temp = temp, type = type)
+      new_loglike_type - old_loglike_type
     ) > runif(num_particles(new_particles))
 
     maha_dist <- papply(new_particles - old_particles, function(x){t(x) %*% solve(var, x)})
@@ -118,7 +124,8 @@
     return(list(
       pre_accept = NA,
       accept = accept,
-      dist = dist
+      dist = dist,
+      comp_time = attr(new_loglike_type, "comptime")
     ))
 
   }
@@ -164,37 +171,38 @@
 
   }
 
+
   mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pre_trans = identity){
     # using MVN (symmetric kernel)
 
     # uses http://aimsciences.org//article/doi/10.3934/fods.2019005
-    # to give every particle some chance of progressing
+    # to give every particle some small chance of progressing
     c_const <- 0.01 # how to choose?
     d_const <- 2
     log_b_const <- ( 1 / ( d_const - 1) ) * log(c_const)
 
-    trans_new_particles <- t(papply(new_particles, pre_trans))
-    trans_old_particles <- t(papply(old_particles, pre_trans))
+    #trans_new_particles <- t(papply(new_particles, pre_trans))
+    #trans_old_particles <- t(papply(old_particles, pre_trans))
+
+    approx_trans_post_new_particles <- papply(new_particles, fun = loglike, lh_trans = pre_trans, type = "approx_posterior", temp = temp, comp_time = T)
+    approx_trans_post_old_particles <- papply(old_particles, fun = loglike, lh_trans = pre_trans, type = "approx_posterior", temp = temp, comp_time = T)
 
     # approximate likelihood threshold (surrogate model)
-    log_rho_tilde_1 <-
-      papply(trans_new_particles, fun = loglike, type = "approx_likelihood", temp = temp) +
-      papply(new_particles, fun = loglike, type = "prior")  -
-      (
-      papply(trans_old_particles, fun = loglike, type = "approx_likelihood", temp = temp) +
-      papply(old_particles, fun = loglike, type = "prior")
-      )
+    log_rho_tilde_1 <- approx_trans_post_new_particles - approx_trans_post_old_particles
+
+    # conservative version
     log_rho_1 <- pmin( -log_b_const, pmax( log_b_const, log_rho_tilde_1 ) )
 
     accept_1 <- exp(log_rho_1) > runif(num_particles(new_particles))
 
+    full_post_new_particles <- papply(new_particles[accept_1,,drop = F], fun = loglike, type = "full_likelihood", temp = temp, comp_time = T)
+    full_post_old_particles <- papply(old_particles[accept_1,,drop = F], fun = loglike, type = "full_likelihood", temp = temp, comp_time = F)
+    approx_trans_llh_new_particles <- papply(new_particles[accept_1,,drop = F], fun = loglike, lh_trans = pre_trans, type = "approx_likelihood", temp = temp)
+    approx_trans_llh_old_particles <- papply(old_particles[accept_1,,drop = F], fun = loglike, lh_trans = pre_trans, type = "approx_likelihood", temp = temp)
+
     log_rho_tilde_2 <-
-      papply(new_particles[accept_1,,drop = F], fun = loglike, type = "full_likelihood", temp = temp) -
-      papply(old_particles[accept_1,,drop = F], fun = loglike, type = "full_likelihood", temp = temp) -
-      (
-        papply(trans_new_particles[accept_1,,drop = F], fun = loglike, type = "approx_likelihood", temp = temp) -
-          papply(trans_old_particles[accept_1,,drop = F], fun = loglike, type = "approx_likelihood", temp = temp)
-      )
+      ( full_post_new_particles - full_post_old_particles ) -
+      ( approx_trans_llh_new_particles - approx_trans_llh_old_particles)
 
     rho_2 <- exp(log_rho_tilde_1[accept_1] + log_rho_tilde_2 - log_rho_1[accept_1]) # only for accepted particles
 
@@ -205,12 +213,17 @@
 
     maha_dist <- papply(new_particles - old_particles, function(x){t(x) %*% solve(var, x)})
 
+    comp_time <- attr(approx_trans_post_new_particles, "comptime") + attr(approx_trans_post_old_particles, "comptime")
+
+    comp_time[accept_1] <- comp_time[accept_1] + attr(full_post_new_particles, "comptime")
+
     dist <- sqrt( maha_dist ) * accept
 
     return(list(
       pre_accept = accept_1,
       accept = accept,
-      dist = dist
+      dist = dist,
+      comp_time = comp_time
     ))
 
   }
@@ -226,7 +239,7 @@
       approx_llhood <-apply(log_theta, MARGIN = 1, loglike, type = "approx_likelihood")
       mode_true <- which.max(true_llhood)
       mode_approx <- which.max(approx_llhood)
-      b_s_start <- c(log_theta[mode_approx,] - log_theta[mode_true,],1,1,1)
+      b_s_start <- c(log_theta[mode_approx,] - log_theta[mode_true,],0,0,0)
 
     }
 
@@ -266,6 +279,19 @@
 
   }
 
+  best_step_scale_ejd_v_time <- function(step_scale, dist, comptime){
+
+    tibble(step_scale = step_scale, dist = dist, comptime = comptime) %>%
+      group_by(step_scale) %>%
+      summarise(m = median(dist/comptime)) %>%
+      {list(
+        step_scale = .$step_scale[which.max(.$m)],
+        dist = max(.$m)
+      )}
+
+
+  }
+
   ## setup
   # num_p <- 50
   # step_scale_set <- c(0.3, 0.5, 0.7, 0.8, 0.9)
@@ -273,7 +299,7 @@
   # use_approx <- F
   # b_s_start <- c(0,0,0,0,0,0)
 
-smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F, b_s_start = c(0,0,0,0,0,0) ){
+smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ejd_threshold, b_s_start = c(0,0,0,0,0,0) ){
 
   stopifnot(! (use_da & use_approx) )
 
@@ -339,9 +365,9 @@ smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F,
     if(use_da){
       # pre transformation
       if(tail(temps,1) < 0.1){
-        partial_optim <- optimise_pre_approx_llhood_transformation(log_theta = environment(log_ann_post_ctmc_da)$unique_x, loglike = log_ann_post_ctmc_da)
+        partial_optim <- optimise_pre_approx_llhood_transformation(log_theta = curr_partl, loglike = log_ann_post_ctmc_da)
       } else {
-        partial_optim <- optimise_pre_approx_llhood_transformation(b_s_start = b_s_start, log_theta = environment(log_ann_post_ctmc_da)$unique_x, loglike = log_ann_post_ctmc_da)
+        partial_optim <- optimise_pre_approx_llhood_transformation(b_s_start = b_s_start, log_theta = curr_partl, loglike = log_ann_post_ctmc_da)
       }
       #optima_matrix <- rbind(optima_matrix, partial_optim$par)
       #pre_trans_pars <- colMeans(optima_matrix)
@@ -354,12 +380,19 @@ smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F,
 
     # update particles for 1 iteration
     curr_partl <- replace_particles(new_particles = proposed_partl, old_particles = resampled_partl, index = mh_res$accept)
-    best_step_scale <- best_step_scale_dist(step_scale = sample_step_scale, dist = mh_res$dist)
+
+    # optimise mh step
+    best_step_scale <- best_step_scale_ejd_v_time(step_scale = sample_step_scale, dist = mh_res$dist, comptime = mh_res$comp_time)
     accept_prop <- mean(mh_res$accept)
     pre_accept_prop <- mean(mh_res$pre_accept)
 
+    # distance threshold
+    total_dist <- mh_res$dist
+
+    mh_step_count <- 1
+
     # update additional times with best_step_scale
-    for(j in 1:2){ # add cumulative distance threshold
+    while(median(total_dist) < refresh_ejd_threshold){
       proposed_partl <- mvn_jitter(particles = curr_partl, step_scale = best_step_scale$step_scale, var = mvn_var$cov)
       #mh_res <- mh_func(new_particles = proposed_partl, old_particles = curr_partl, var = mvn_var$cov, temp = tail(temps,1) )
       if(use_da){
@@ -370,20 +403,25 @@ smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F,
       curr_partl <- replace_particles(new_particles = proposed_partl, old_particles = curr_partl, index = mh_res$accept)
       accept_prop <- c(accept_prop, mean(mh_res$accept))
       pre_accept_prop <- c(pre_accept_prop, mean(mh_res$pre_accept))
+
+      total_dist <- total_dist + mh_res$dist
+      mh_step_count <- mh_step_count + 1
     }
 
     target_log_post <-  papply(curr_partl, fun = log_ann_post_ctmc_da, temp = 1, type = ifelse(use_approx, "approx_posterior", "full_posterior") )
 
     etime <- Sys.time()
 
-    ttime <- ttime + etime-stime
+    ttime <- ttime + etime - stime
 
     cat("*iter:", i,
-        "*temp:", round(tail(temps,1),4), "\n\t",
-        "*llike-target:", vec_summary(target_log_post),
+        "*temp:", round(tail(temps,1),3), "\n\t",
+        "*llh-target:", vec_summary(target_log_post),
         "*step-scale:", best_step_scale$step_scale,
-        "*pre-accept-pr:", mean(pre_accept_prop),
-        "*accept-pr:", mean(accept_prop),
+        "*step-scale-dist:", round(best_step_scale$dist,3),
+        "*mh-steps:", mh_step_count,
+        "*pre-accept-pr:", round(mean(pre_accept_prop),3),
+        "*accept-pr:", round(mean(accept_prop),3),
         "*time:", round(difftime(etime, stime, units = "secs"),1),
         "\n")
 
@@ -410,9 +448,10 @@ smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F,
 }
 
 f_pars <-  list(
-  num_p = 50,
-  step_scale_set = c(0.3, 0.5, 0.7, 0.8, 0.9),
-  b_s_start = c(0,0,0,0,0,0)
+  num_p = 100,
+  step_scale_set = c(0.01, 0.05, 0.1, 0.2),
+  b_s_start = c(0,0,0,0,0,0),
+  refresh_ejd_threshold = 0.01
 )
 
 # list2env(f_pars, envir = globalenv()); use_da = T; use_approx = F
@@ -421,7 +460,8 @@ smc_da <- with(f_pars, smc_lotka_volterra_da(
     use_da = T, use_approx = F,
     num_p = num_p,
     step_scale_set = step_scale_set,
-    b_s_start = b_s_start
+    b_s_start = b_s_start,
+    refresh_ejd_threshold = refresh_ejd_threshold
     )
   )
 
@@ -429,7 +469,8 @@ smc_full <- with(f_pars, smc_lotka_volterra_da(
     use_da = F, use_approx = F,
     num_p = num_p,
     step_scale_set = step_scale_set,
-    b_s_start = b_s_start
+    b_s_start = b_s_start,
+    refresh_ejd_threshold = refresh_ejd_threshold
     )
   )
 
@@ -437,18 +478,28 @@ smc_approx <- with(f_pars, smc_lotka_volterra_da(
     use_da = F, use_approx = T,
     num_p = num_p,
     step_scale_set = step_scale_set,
-    b_s_start = b_s_start
+    b_s_start = b_s_start,
+    refresh_ejd_threshold = refresh_ejd_threshold
     )
   )
 
 sapply(list(smc_da,smc_full,smc_approx), FUN = getElement, name = "total_time")
 
+# plot how well log-likelihood approximation is doing each interation.
+
 # CHRIS:
 # double annealing?
 # check and see if subsampling the lotka-volterra approximation is a big speed up
 # other models with high gains from approx likelihood
+# ensemble particle filter paper + DA
+# SMC squared speed up?
+
+# implement eve estimator
+# refactor for next apps
 
 # UPDATES:
-# target ESJD/cost
 # could make optimisation for approx likelihood only run when approx vs full posterior discrepancy is beyond some cutoff?
 # check and see if subsampling the lotka-volterra approximation is a big speed up
+
+# IDEAS:
+# data subsampling with non-iid. Find good subset to base off. Hierarchal logistic or something.
