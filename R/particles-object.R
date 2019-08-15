@@ -41,6 +41,7 @@ particles <- function(..., weights = 1){
   class(prts_mat) <- c("particles","matrix")
   attr(prts_mat, "components") <- comp_attr
   attr(prts_mat, "log_weights") <- unn_log_weights
+  attr(prts_mat, "eve") <- 1:nrow(prts_mat)
   return(prts_mat)
 
 }
@@ -289,6 +290,7 @@ select_reweight_particles <- function(object, index, reweight = T){
   object[] <- object[index,]
 
   if(reweight) weights(object) <- 1
+  eve(object) <- eve(object)[index]
 
   return(object)
 
@@ -318,6 +320,10 @@ replace_particles <- function(new_particles, old_particles, index, reweight = T)
 
   if(reweight) weights(out_particles) <- 1
 
+  out_eve <- eve(old_particles)
+  out_eve[index] <- eve(new_particles)[index]
+  eve(out_particles) <- out_eve
+
   return(out_particles)
 
 }
@@ -341,5 +347,49 @@ as.list.particles <- function(x, ...){
     lapply( names(x), function(nm) x[[nm]]),
     nm = names(x)
   )
+
+}
+
+
+#' Eve of particles
+#'
+#' @param object Object to return eve for.
+#'
+#' @return eve, original ancestor of particles.
+#' @export
+#'
+eve <- function(object){
+
+  UseMethod("eve")
+
+}
+
+#' Eve of particles
+#'
+#' @param object Object to return eve for.
+#'
+#' @return eve, original ancestor of particles.
+#' @export
+#'
+eve.particles <- function(object){
+
+ attr(object, "eve")
+
+}
+
+#' Set eve of particles
+#'
+#' @param object Object to set eve for.
+#' @param value Value of new eve.
+#'
+`eve<-` <- function(object, value){
+
+  stopifnot( num_particles(object) == length(value) )
+
+  cp_obj <- object
+
+  attr(cp_obj, "eve") <- value
+
+  return(cp_obj)
 
 }

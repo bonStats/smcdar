@@ -26,7 +26,7 @@
     geom_line(aes(x = time, y = level, colour = pop_name)) +
     theme_bw()
 
-  sim <- sim[sim[,"time"] < 4,]
+  sim <- sim[sim[,"time"] < 0.5,]
 
   vec_summary <- function(x){
 
@@ -320,6 +320,8 @@ smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F,
 
   curr_partl <- particles(log_theta = log_theta_start)
 
+  log_z <- log(num_p)
+
   while(tail(temps,1) < 1){
     stime <- Sys.time()
 
@@ -351,6 +353,8 @@ smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F,
 
     # weight update
     weights(curr_partl, log = T) <- weights(curr_partl, log = T) + curr_log_post - prev_log_post
+
+    log_z <- log_z + log(sum(weights(curr_partl, log = F, normalise = F))) - log(num_p)
 
     mvn_var <- cov.wt(curr_partl, wt =  weights(curr_partl), method = "unbiased")
 
@@ -436,10 +440,10 @@ smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F,
 
   # make function to return approx posterior...
 
-
-
   return(list(
     particles = curr_partl,
+    log_z = log_z,
+    eve_var_est = eve_var_est(curr_partl, log_z = log_z, num_iter = i),
     total_time = ttime,
     temps = temps,
     log_ann_post_ctmc_da = log_ann_post_ctmc_da
@@ -494,8 +498,10 @@ sapply(list(smc_da,smc_full,smc_approx), FUN = getElement, name = "total_time")
 # ensemble particle filter paper + DA
 # SMC squared speed up?
 
-# implement eve estimator
+# implement/check eve estimator
 # refactor for next apps
+
+#https://xianblog.wordpress.com/2019/08/11/delayed-acceptance-ada-boosted/
 
 # UPDATES:
 # could make optimisation for approx likelihood only run when approx vs full posterior discrepancy is beyond some cutoff?
