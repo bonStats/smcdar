@@ -320,7 +320,7 @@ smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F,
 
   curr_partl <- particles(log_theta = log_theta_start)
 
-  log_z <- log(num_p)
+  log_z <- 0
 
   while(tail(temps,1) < 1){
     stime <- Sys.time()
@@ -354,7 +354,7 @@ smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F,
     # weight update
     weights(curr_partl, log = T) <- weights(curr_partl, log = T) + curr_log_post - prev_log_post
 
-    log_z <- log_z + log(sum(weights(curr_partl, log = F, normalise = F))) - log(num_p)
+    log_z <- log_z + log(sum(weights(curr_partl, log = F, normalise = F)))
 
     mvn_var <- cov.wt(curr_partl, wt =  weights(curr_partl), method = "unbiased")
 
