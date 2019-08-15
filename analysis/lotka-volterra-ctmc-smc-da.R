@@ -1,32 +1,4 @@
-#### load packages ####
-  library(smcdar)
-  library(dplyr)
-  library(tidyr)
-  library(ggplot2)
-
-#### simulate data ####
-  # (birth prey, death prey/ birth pred, death pred)
-  true_theta <- c(0.17,0.01,0.2)
-  sim <- simulate_lotka_volterra_ctmc(
-    true_theta,
-    y1_min = 0,
-    y2_min = 0,
-    y1_max =100,
-    y2_max=100,
-    initial_y1 = 40,
-    initial_y2 =25,
-    total_time=50
-    )
-
-  tidy_sim <- sim %>% as.data.frame() %>%
-    gather(pop,level,-time) %>%
-    mutate(pop_name = ifelse(pop == "y1", "prey", "pred"))
-
-  tidy_sim %>% ggplot() +
-    geom_line(aes(x = time, y = level, colour = pop_name)) +
-    theme_bw()
-
-  sim <- sim[sim[,"time"] < 0.5,]
+#### Helper ####
 
   vec_summary <- function(x){
 
@@ -36,41 +8,9 @@
 
   }
 
+####
+
 #### SMC ####
-
-  #prior: theta ~ logNormal(-1,0.5) or log(theta) ~ Normal(-1,0.5)
-  log_prior <- function(log_theta){
-
-    sum( dnorm(log_theta, mean = c(-2,-5,-2), sd = rep(0.5, 3), log = T) )
-
-  }
-
-  log_like <- function(log_theta){
-    log_lhood_lotka_volterra_ctmc(
-      theta = exp(log_theta),
-      y1 = sim[,"y1"], y2 = sim[,"y2"],
-      y1_max = 100, y2_max = 100,
-      times = sim[,"time"]
-    ) #* exp(log_theta) # Don't need change of var since this is the likelihood?
-  }
-
-  #thin_i <- 1:floor(nrow(sim) / 4)
-  thin_i <- 1:nrow(sim)
-
-  log_like_approx <- function(log_theta){
-    log_lhood_lotka_volterra_lna(
-      theta = exp(log_theta),
-      y1 = sim[thin_i,"y1"], y2 = sim[thin_i,"y2"],
-      times = sim[thin_i,"time"]
-    ) #* exp(log_theta) # Don't need change of var since this is the likelihood?
-  }
-
-  # log_ann_post_ctmc <-
-  #   log_likelihood_anneal_func(
-  #     log_likelihood = log_like,
-  #     log_prior = log_prior,
-  #     use_memoise = T
-  #     )
 
   # unified interface to posterior, likelihoods, so that memoising is efficient
   log_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, log_prior){
@@ -245,7 +185,7 @@
 
     which_upper <- which( true_llhood > quantile(true_llhood, probs = 0.1) )
 
-    use_index <- sample(which_upper, size = 20, replace = FALSE)
+    use_index <- sample(which_upper, size = min(20, length(which_upper)), replace = FALSE)
 
     topt <- function(b_s){
 
@@ -299,7 +239,9 @@
   # use_approx <- F
   # b_s_start <- c(0,0,0,0,0,0)
 
-smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ejd_threshold, b_s_start = c(0,0,0,0,0,0) ){
+smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ejd_threshold, b_s_start = c(0,0,0,0,0,0),
+                                  log_prior, log_like, log_like_approx, sim_data, verbose = F
+                                  ){
 
   stopifnot(! (use_da & use_approx) )
 
@@ -321,6 +263,8 @@ smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F,
   curr_partl <- particles(log_theta = log_theta_start)
 
   log_z <- 0
+  iter_summary <- NULL
+  particle_list <- list(curr_partl)
 
   while(tail(temps,1) < 1){
     stime <- Sys.time()
@@ -418,18 +362,39 @@ smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F,
 
     ttime <- ttime + etime - stime
 
-    cat("*iter:", i,
-        "*temp:", round(tail(temps,1),3), "\n\t",
-        "*llh-target:", vec_summary(target_log_post),
-        "*step-scale:", best_step_scale$step_scale,
-        "*step-scale-dist:", round(best_step_scale$dist,3),
-        "*mh-steps:", mh_step_count,
-        "*pre-accept-pr:", round(mean(pre_accept_prop),3),
-        "*accept-pr:", round(mean(accept_prop),3),
-        "*time:", round(difftime(etime, stime, units = "secs"),1),
-        "\n")
+    if(verbose){
+      cat("*iter:", i,
+          "*temp:", round(tail(temps,1),3), "\n\t",
+          "*llh-target:", vec_summary(target_log_post),
+          "*step-scale:", best_step_scale$step_scale,
+          "*step-scale-dist:", round(best_step_scale$dist,3),
+          "*mh-steps:", mh_step_count,
+          "*pre-accept-pr:", round(mean(pre_accept_prop),3),
+          "*accept-pr:", round(mean(accept_prop),3),
+          "*time:", round(difftime(etime, stime, units = "secs"),1),
+          "\n")
+    }
 
     i <- i + 1
+
+    iter_summary <- c(iter_summary,
+                      list(iter = i,
+                           temp = tail(temps,1),
+                           llh_target = target_log_post,
+                           approx_llh_pre_trans = if(use_da){ pre_trans } else {NULL},
+                           step_scale = best_step_scale$step_scale,
+                           step_scale_dist = best_step_scale$dist,
+                           mh_steps = mh_step_count,
+                           pre_accept_pr = pre_accept_prop,
+                           accept_pr = accept_prop,
+                           time = difftime(etime, stime, units = "secs")
+                      )
+    )
+
+    particle_list <- c(particle_list,
+                       list(curr_partl)
+                       )
+
   }
 
   # reweight:
@@ -446,48 +411,12 @@ smc_lotka_volterra_da <- function(num_p, step_scale_set, use_da, use_approx = F,
     eve_var_est = eve_var_est(curr_partl, log_z = log_z, num_iter = i),
     total_time = ttime,
     temps = temps,
-    log_ann_post_ctmc_da = log_ann_post_ctmc_da
+    log_ann_post_ctmc_da = log_ann_post_ctmc_da,
+    iter_summary = iter_summary,
+    particle_list = particle_list
   ))
 
 }
-
-f_pars <-  list(
-  num_p = 100,
-  step_scale_set = c(0.01, 0.05, 0.1, 0.2),
-  b_s_start = c(0,0,0,0,0,0),
-  refresh_ejd_threshold = 0.01
-)
-
-# list2env(f_pars, envir = globalenv()); use_da = T; use_approx = F
-
-smc_da <- with(f_pars, smc_lotka_volterra_da(
-    use_da = T, use_approx = F,
-    num_p = num_p,
-    step_scale_set = step_scale_set,
-    b_s_start = b_s_start,
-    refresh_ejd_threshold = refresh_ejd_threshold
-    )
-  )
-
-smc_full <- with(f_pars, smc_lotka_volterra_da(
-    use_da = F, use_approx = F,
-    num_p = num_p,
-    step_scale_set = step_scale_set,
-    b_s_start = b_s_start,
-    refresh_ejd_threshold = refresh_ejd_threshold
-    )
-  )
-
-smc_approx <- with(f_pars, smc_lotka_volterra_da(
-    use_da = F, use_approx = T,
-    num_p = num_p,
-    step_scale_set = step_scale_set,
-    b_s_start = b_s_start,
-    refresh_ejd_threshold = refresh_ejd_threshold
-    )
-  )
-
-sapply(list(smc_da,smc_full,smc_approx), FUN = getElement, name = "total_time")
 
 # plot how well log-likelihood approximation is doing each interation.
 
