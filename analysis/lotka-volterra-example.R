@@ -1,3 +1,99 @@
+
+true_theta <- c(0.17,0.01,0.2)
+
+sim <- simulate_lotka_volterra_ctmc(
+  true_theta,
+  y1_min = 0,
+  y2_min = 0,
+  y1_max =100,
+  y2_max=100,
+  initial_y1 = 40,
+  initial_y2 =25,
+  total_time=50
+)
+
+tidy_sim <- sim %>% as.data.frame() %>%
+  gather(pop,level,-time) %>%
+  mutate(pop_name = ifelse(pop == "y1", "prey", "pred"))
+
+tidy_sim %>% ggplot() +
+  geom_line(aes(x = time, y = level, colour = pop_name)) +
+  theme_bw()
+
+sim <- sim[1:100,]
+
+#### Priors, likelihoods ####
+
+#prior: theta ~ logNormal(-1,0.5) or log(theta) ~ Normal(-1,0.5)
+log_prior <- function(log_theta){
+
+  sum( dnorm(log_theta, mean = c(-2,-5,-2), sd = rep(0.5, 3), log = T) )
+
+}
+
+log_like <- function(log_theta){
+  log_lhood_lotka_volterra_ctmc(
+    theta = exp(log_theta),
+    y1 = sim[,"y1"], y2 = sim[,"y2"],
+    y1_max = 100, y2_max = 100,
+    times = sim[,"time"]
+  ) #* exp(log_theta) # Don't need change of var since this is the likelihood?
+}
+
+log_like_approx <- function(log_theta){
+  log_lhood_lotka_volterra_lna(
+    theta = exp(log_theta),
+    y1 = sim[1:g_pars$N_approx,"y1"], y2 = sim[1:g_pars$N_approx,"y2"],
+    times = sim[1:g_pars$N_approx,"time"]
+  )
+}
+
+####
+
+source("analysis/lotka-volterra-ctmc-smc-da.R")
+
+f_pars <-  list(
+  num_p = 100,
+  step_scale_set = c(0.01, 0.05, 0.1, 0.2),
+  b_s_start = c(0,0,0,0,0,0),
+  refresh_ejd_threshold = 0.01
+)
+
+# list2env(f_pars, envir = globalenv()); use_da = T; use_approx = F
+
+smc_da <- with(f_pars, smc_lotka_volterra_da(
+  use_da = T, use_approx = F,
+  num_p = num_p,
+  step_scale_set = step_scale_set,
+  b_s_start = b_s_start,
+  refresh_ejd_threshold = refresh_ejd_threshold
+)
+)
+
+smc_full <- with(f_pars, smc_lotka_volterra_da(
+  use_da = F, use_approx = F,
+  num_p = num_p,
+  step_scale_set = step_scale_set,
+  b_s_start = b_s_start,
+  refresh_ejd_threshold = refresh_ejd_threshold
+)
+)
+
+smc_approx <- with(f_pars, smc_lotka_volterra_da(
+  use_da = F, use_approx = T,
+  num_p = num_p,
+  step_scale_set = step_scale_set,
+  b_s_start = b_s_start,
+  refresh_ejd_threshold = refresh_ejd_threshold
+)
+)
+
+sapply(list(smc_da,smc_full,smc_approx), FUN = getElement, name = "total_time")
+
+
+
+
+
 # lotka-volterra models
 library(markovchain)
 library(smcdar)
