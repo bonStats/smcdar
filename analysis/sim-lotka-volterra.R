@@ -1,4 +1,5 @@
 .libPaths(Sys.getenv("R_LIB_USER"))
+outdir <- Sys.getenv("OUT_DIRECTORY")
 
 devtools::install_github("bonStats/smcdar")
 
@@ -49,7 +50,7 @@ library(future.apply)
   sim_settings <- rep(list(list(f_pars = NULL, g_pars = g_pars)), 2)
 
   sim_settings[[1]]$f_pars <- list(
-    num_p = 20,
+    num_p = 100,
     step_scale_set = c(0.01, 0.05, 0.1, 0.2),
     b_s_start = c(0,0,0,0,0,0),
     refresh_ejd_threshold = 0.01
@@ -68,7 +69,7 @@ library(future.apply)
 
 #### Code for sim ####
 
-  run_sim <- function(ss){
+  run_sim <- function(ss, verbose = F){
 
     ## simulate data
 
@@ -102,7 +103,8 @@ library(future.apply)
       log_prior = log_prior,
       log_like = log_like,
       log_like_approx = log_like_approx,
-      sim_data = sim_data
+      sim_data = sim_data,
+      verbose = verbose
     )
     )
     cat(1)
@@ -118,7 +120,7 @@ library(future.apply)
       sim_data = sim_data
     )
     )
-
+    cat(2)
     smc_approx <- with(ss$f_pars, smc_lotka_volterra_da(
       use_da = F, use_approx = T,
       num_p = num_p,
@@ -150,19 +152,17 @@ library(future.apply)
 
   plan(multicore)
 
-  res <- list()
-
   for(i in seq_along(sim_settings)){
 
-    res[[i]] <- future_replicate(n = 1,
-                                 run_sim(ss = sim_settings[[i]]),
+    res <- future_replicate(n = 1,
+                                 run_sim(ss = sim_settings[[i]], verbose = T),
                                  simplify = F)
+
+    #saveRDS(res, file.path(outdir, paste0("sim_res_",i,"_20190816.rds")))
 
   }
 
-<<<<<<< HEAD
 
-  saveRDS(res, "")
-=======
-# save res
->>>>>>> c6709e163f9cdb9fc4d47cba5cff01028789c90a
+# optimisation likely too long with 100 particles? But already sampling...
+# try simple mean model
+# add function evaluations counts
