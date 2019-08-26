@@ -18,22 +18,52 @@ papply <- function(particles, fun, comp_time = F, ...){
 
   } else {
 
-    fun_t <- function(...){
-      tout <- system.time({
-        out <- fun(...)
-      })
-
-      attr(out, "t") <- tout["user.self"]
-      return(out)
+    fun_time <- function(x, ...){
+      tic <- Sys.time()
+      res <- fun(x, ...)
+      toc <- Sys.time()
+      tim <- toc - tic
+      list(res = res, time = tim)
     }
 
-    out <- lapply(split(particles[], row(particles[])), fun_t, ...)
+    res_list <- apply(particles, MARGIN = 1, FUN = fun_time, ...)
 
-    vals <- simplify2array(out)
-    attr(vals, "comptime") <- unname(sapply(out, attr, which = "t"))
+    res <- simplify2array(lapply(res_list, getElement, name = "res"))
+    timing <- sapply(res_list, getElement, name = "time")
 
-    vals
+    attr(res, "comptime") <- timing
 
+    return(res)
   }
 
 }
+
+#' papply2 <- function(particles, fun, comp_time = F, groups, ...){
+#'
+#'   if(!comp_time){
+#'
+#'     apply(particles, MARGIN = 1, FUN = fun, ...)
+#'
+#'   } else {
+#'
+#'     if(missing(groups)) groups <- rep(1, num_particles(particles))
+#'
+#'     res <- vector(mode = "list", length = num_particles(particles))
+#'     ugroups <- unique(groups)
+#'     timing <- setNames(rep(NA_real_, length(ugroups)), ugroups)
+#'     len <- rep(NA_integer_, length(ugroups))
+#'
+#'     for(tgp in ugroups){
+#'       tic <- Sys.time()
+#'       res[tgp == groups] <- apply(particles[tgp == groups, , drop = F], MARGIN = 1, FUN = fun, ...)
+#'       len <- sum(tgp == groups)
+#'       toc <- Sys.time()
+#'       timing[tgp] <- toc - tic
+#'     }
+#'
+#'     res <- simplify2array(res)
+#'     attr(res, "comptime") <- timing / len
+#'     return(res)
+#'   }
+#'
+#' }
