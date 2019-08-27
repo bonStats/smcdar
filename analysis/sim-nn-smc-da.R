@@ -20,13 +20,13 @@ library(furrr)
 # prior: beta ~ Normal(0,1)
 log_prior <- function(beta){
 
-  sum( dnorm(beta, mean = rep(0, times = 5), sd = 5, log = T) )
+  sum( dnorm(beta, mean = rep(0, times = 5), sd = 2, log = T) )
 
 }
 
 draw_prior <- function(n){
   matrix(
-    rnorm(n * 5, mean = rep(0, times = 5), sd = 5), ncol = 5, byrow = T
+    rnorm(n * 5, mean = rep(0, times = 5), sd = 2), ncol = 5, byrow = T
   )
 }
 
@@ -38,7 +38,7 @@ log_like <- function(beta, X, y){
 
 log_like_approx <- function(beta, X, y, bias){
 
-  sum( dnorm(y, mean = X %*% (beta + bias), sd = 1.5, log = T) )
+  sum( dnorm(y, mean = X %*% ( (beta + bias) / 0.5) , sd = 1, log = T) )
 
 }
 
@@ -50,9 +50,9 @@ nn_optimise_pre_approx_llhood_transformation <- function(particles, b_s_start, l
 
   len <- ncol(particles)
 
-  if(missing(b_s_start)){
+  if(missing(b_s_start) | is.null(b_s_start)){
 
-    b_s_start <- rep(0, times = len)
+    b_s_start <- rep(0, times = len * 2)
 
   }
 
@@ -72,7 +72,7 @@ nn_optimise_pre_approx_llhood_transformation <- function(particles, b_s_start, l
 
   }
 
-  optim(par = b_s_start, fn = topt, control = list(maxit = 100), method = "BFGS")
+  optim(par = b_s_start, fn = topt, control = list(maxit = 5), method = "BFGS")
 
 }
 
@@ -212,3 +212,34 @@ run_sim <- function(ss, verbose = F){
 res <- run_sim(ss = sim_settings[[1]], verbose = T)
 
 #res <- future_map(1:100, .f = function(x) , .progress = T)
+
+da_opt_approx_ll_hood <- function(b, res, i){
+
+  # pre-trans is identity if not turned on.
+  res$smc_da$log_ann_post_ctmc_da(
+    x = b, temp = 1,
+    lh_trans = res$smc_da$iter_summary[[i]]$approx_llh_pre_trans,
+    type = "approx_likelihood"
+    )
+
+}
+
+ll_hood <- function(b, res, i){
+
+  # pre-trans is identity if not turned on.
+  res$smc_da$log_ann_post_ctmc_da(
+    x = b, temp = 1,
+    type = "full_likelihood"
+  )
+
+}
+
+mean_beta <- colMeans(res$smc_da$particles)
+
+approx_ll <- function(x) sapply(x, function(x) da_opt_approx_ll_hood(b = replace(mean_beta, list = 1, x), res = res, i = 1))
+full_ll <- function(x) sapply(x, function(x) ll_hood(b = replace(mean_beta, list = 1, x), res = res, i = 1))
+
+x <- seq(-10,10, length.out = 200)
+
+plot(x, exp(approx_ll(x)), type = "l")
+lines(x, exp(full_ll(x)), col = "red")
