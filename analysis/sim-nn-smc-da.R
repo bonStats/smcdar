@@ -76,6 +76,18 @@ nn_optimise_pre_approx_llhood_transformation <- function(particles, b_s_start, l
 
 }
 
+best_step_scale_ejd_v_time <- function(step_scale, dist, comptime){
+
+  tibble(step_scale = step_scale, dist = dist, comptime = comptime) %>%
+    group_by(step_scale) %>%
+    summarise(objective = mean(dist/comptime), mean_dist = mean(dist)) %>%
+    {list(
+      step_scale = .$step_scale[which.max(.$objective)],
+      dist = .$mean_dist[which.max(.$objective)]
+    )}
+
+}
+
 nn_posterior <- function(y, X, sigma, tau){
   p <- ncol(X)
   n <- length(y)
@@ -99,14 +111,15 @@ nn_posterior <- function(y, X, sigma, tau){
 # true_theta = (birth rate prey, death rate prey/ birth rate pred, death rate pred)
 g_pars <- list(N = 100, N_approx = 100, true_beta = c(0, 0.5, -1.5, 1.5, -3),
                log_prior = log_prior, log_like = log_like, log_like_approx = log_like_approx,
-               draw_prior = draw_prior, optimise_pre_approx_llhood_transformation = nn_optimise_pre_approx_llhood_transformation
+               draw_prior = draw_prior, optimise_pre_approx_llhood_transformation = nn_optimise_pre_approx_llhood_transformation,
+               best_step_scale_ejd_v_time = best_step_scale_ejd_v_time
 )
 
 sim_settings <- rep(list(list(f_pars = NULL, g_pars = g_pars)), 2)
 
 sim_settings[[1]]$f_pars <- list(
   num_p = 100,
-  step_scale_set = c(0.05, 0.1, 0.2, 0.4, 0.6),
+  step_scale_set = c(0.25, 0.4, 0.55, 0.7),
   b_s_start = rep(0, 10),
   refresh_ejd_threshold = 1,
   approx_ll_bias = 1
@@ -114,7 +127,7 @@ sim_settings[[1]]$f_pars <- list(
 
 sim_settings[[2]]$f_pars <- list(
   num_p = 200,
-  step_scale_set =  c(0.05, 0.1, 0.2, 0.4, 0.6),
+  step_scale_set =  c(0.25, 0.4, 0.55, 0.7),
   b_s_start = rep(0, 10),
   refresh_ejd_threshold = 1,
   approx_ll_bias = 1
@@ -134,6 +147,8 @@ simulate_regr <- function(N, beta){
 ####
 
 #### Code for sim ####
+
+# ss = sim_settings[[1]]; verbose = T
 
 run_sim <- function(ss, verbose = F){
 
@@ -161,6 +176,7 @@ run_sim <- function(ss, verbose = F){
     log_like_approx = log_like_approx,
     draw_prior = ss$g_pars$draw_prior,
     optimise_pre_approx_llhood_transformation =  ss$g_pars$optimise_pre_approx_llhood_transformation,
+    best_step_scale_ejd_v_time = ss$g_pars$best_step_scale_ejd_v_time,
     verbose = verbose
   )
   )
@@ -175,7 +191,8 @@ run_sim <- function(ss, verbose = F){
     log_like = log_like,
     log_like_approx = log_like_approx,
     draw_prior = ss$g_pars$draw_prior,
-    optimise_pre_approx_llhood_transformation =  ss$g_pars$optimise_pre_approx_llhood_transformation,
+    optimise_pre_approx_llhood_transformation =  NULL,
+    best_step_scale_ejd_v_time = ss$g_pars$best_step_scale_ejd_v_time,
     verbose = verbose
   )
    )
@@ -191,7 +208,8 @@ run_sim <- function(ss, verbose = F){
     log_like = log_like,
     log_like_approx = log_like_approx,
     draw_prior = ss$g_pars$draw_prior,
-    optimise_pre_approx_llhood_transformation =  ss$g_pars$optimise_pre_approx_llhood_transformation,
+    optimise_pre_approx_llhood_transformation =  NULL,
+    best_step_scale_ejd_v_time = ss$g_pars$best_step_scale_ejd_v_time,
     verbose = verbose
   )
   )
@@ -209,7 +227,7 @@ run_sim <- function(ss, verbose = F){
 
 ####
 
-res <- run_sim(ss = sim_settings[[1]], verbose = T)
+res <- run_sim(ss = sim_settings[[2]], verbose = T)
 
 #res <- future_map(1:100, .f = function(x) , .progress = T)
 

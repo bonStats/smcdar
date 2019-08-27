@@ -1,5 +1,3 @@
-# recording time in mh takes too long. record average per parameter
-
 #### Helper ####
 
 vec_summary <- function(x){
@@ -127,34 +125,10 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
 
 }
 
-
-best_step_scale_ejd_v_time <- function(step_scale, dist, comptime){
-
-    tibble(step_scale = step_scale, dist = dist, comptime = comptime) %>%
-      group_by(step_scale) %>%
-      summarise(objective = median(dist/(1 + comptime)), mean_dist = mean(dist)) %>%
-      {list(
-        step_scale = .$step_scale[which.max(.$objective)],
-        dist = max(.$mean_dist)
-      )}
-
-
-  }
-
-# best_step_scale_ejd_v_time <- function(step_scale, dist, comptime){
-#
-#   tibble(step_scale = step_scale, dist = dist, comptime = comptime) %>%
-#     group_by(step_scale) %>%
-#     summarise(m = median(dist/comptime)) %>%
-#     {list(
-#       step_scale = .$step_scale[which.max(.$m)],
-#       dist = max(.$m)
-#     )}
-#
-# }
-
 run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ejd_threshold, b_s_start,
-                       log_prior, log_like, log_like_approx, draw_prior, optimise_pre_approx_llhood_transformation,
+                       log_prior, log_like, log_like_approx, draw_prior,
+                       optimise_pre_approx_llhood_transformation,
+                       best_step_scale_ejd_v_time,
                        verbose = F
 ){
 
@@ -293,9 +267,9 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
           "*llh-target:", vec_summary(target_log_post),
           "*step-scale:", best_step_scale$step_scale,
           "*step-scale-dist:", round(best_step_scale$dist,3),
-          "*mh-steps:", mh_step_count,
-          "*pre-accept-pr:", round(mean(pre_accept_prop),3),
-          "*accept-pr:", round(mean(accept_prop),3),
+          "*mh-steps:", mh_step_count,"\n\t",
+          "*pre-accept-pr:", round(mean(pre_accept_prop[-1]),3),
+          "*accept-pr:", round(mean(accept_prop[-1]),3),
           "*time:", round(difftime(etime, stime, units = "secs"),1),
           "\n")
     }
