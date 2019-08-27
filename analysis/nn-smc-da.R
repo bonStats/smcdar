@@ -171,6 +171,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
   ttime <- 0 # total time
   temps <- 0
   optima_matrix <- NULL
+  b_s_start <- NULL
 
   # need to generalise (or take out of function and have pre-defined?) generate_intial?
   curr_partl <- particles(beta = draw_prior(num_p))
@@ -179,7 +180,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
   iter_summary <- list()
   particle_list <- list(curr_partl)
 
-  while(tail(temps,1) < 0.3){
+  while(tail(temps,1) < 1){
     stime <- Sys.time()
 
     curr_log_post <- papply(curr_partl, fun = log_ann_post_ctmc_da, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
@@ -234,17 +235,18 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
     proposed_partl <- mvn_jitter(particles = resampled_partl, step_scale = sample_step_scale, var = mvn_var$cov) # jittered particles
 
     if(use_da){
-      # pre transformation
-      if(length(temps) <= 2){
-        partial_optim <- optimise_pre_approx_llhood_transformation(particles = curr_partl, loglike = log_ann_post_ctmc_da, temp = tail(temps, 1))
+
+      # pre-tranformation for approx likelihood
+      if(tail(temps,1) > 0.05){
+        partial_optim <- optimise_pre_approx_llhood_transformation(particles = curr_partl, loglike = log_ann_post_ctmc_da, temp = tail(temps, 1), b_s_start = b_s_start)
+        pre_trans <- function(x){ (x - partial_optim$par[1:5]) / exp(partial_optim$par[6:10]) }
+        b_s_start <- partial_optim$par
       } else {
-        partial_optim <- optimise_pre_approx_llhood_transformation(particles = curr_partl, b_s_start = b_s_start, loglike = log_ann_post_ctmc_da, temp = tail(temps, 1))
+        pre_trans <- identity
       }
-      #optima_matrix <- rbind(optima_matrix, partial_optim$par)
-      #pre_trans_pars <- colMeans(optima_matrix)
-      pre_trans <- function(x){ (x - partial_optim$par[1:5]) / exp(partial_optim$par[6:10]) }
-      b_s_start <- partial_optim$par
+
       mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans)
+
     } else {
       mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
     }
@@ -308,6 +310,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
                            mh_steps = mh_step_count,
                            pre_accept_pr = pre_accept_prop,
                            accept_pr = accept_prop,
+                           ll_opt_par = b_s_start,
                            time = difftime(etime, stime, units = "secs")
                       )
 
