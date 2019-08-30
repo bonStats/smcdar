@@ -125,6 +125,25 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
 
 }
 
+
+time_steps_to_min_quantile_dist_emp <- function(dist, D, rho, max_T = 10){
+
+  nz_index <- abs(dist) > 1e-04
+  acceptance_rate <- mean( nz_index )
+  ecdf_nz_dist <- ecdf(dist[nz_index])
+
+  for(tT in 1:max_T){
+
+    pr_D <- sum( (1:tT) * (1 - ecdf_nz_dist(D/1:tT)) * dbinom(1:tT, size = tT, prob = acceptance_rate) )
+    if(pr_D > rho) break;
+
+  }
+
+  if(pr_D < rho) return(NA)
+  else return(pr_D)
+
+}
+
 run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ejd_threshold, b_s_start,
                        log_prior, log_like, log_like_approx, draw_prior,
                        optimise_pre_approx_llhood_transformation,
