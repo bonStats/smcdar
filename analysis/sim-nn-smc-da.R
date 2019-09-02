@@ -88,6 +88,41 @@ best_step_scale_ejd_v_time <- function(step_scale, dist, comptime){
 
 }
 
+best_step_scale <- function(eta, dist, D, rho, max_T = 10, surrogate_acceptance, surrogate_cost, full_cost, model = "empirical", da = T){
+
+  find_min_iter <- switch(model,
+                          empirical = time_steps_to_min_quantile_dist_emp,
+                          normal = time_steps_to_min_quantile_dist_normal,
+                          gamma = time_steps_to_min_quantile_dist_gamma
+  )
+
+  unq_eta <- unique(eta)
+  min_T_res <- vector(mode = "list", length = length(unq_eta))
+
+  for(i in 1:length(unq_eta)){
+
+    ue <- unq_eta[i]
+    min_T_res[[i]] <- find_min_iter(dist = dist[eta == ue], D = D, rho = rho, max_T = max_T)
+
+  }
+
+  which_eta_consider <- sapply(min_T_res, getElement, name = "sufficient_iter")
+
+  if(all(!which_eta_consider)) stop("No MH tuning parameters have sufficient iteratios to reach target median.")
+
+  min_T <- sapply(min_T_res, getElement, name = "iter")
+  min_T[!which_eta_consider] <- Inf
+
+  if(da){
+    which_total_cost <- min_da_mh_cost(min_T, surrogate_acceptance, surrogate_cost, full_cost)
+  } else {
+    which_total_cost <- min_mh_cost(min_T)
+  }
+
+
+
+}
+
 nn_posterior <- function(y, X, sigma, tau){
   p <- ncol(X)
   n <- length(y)

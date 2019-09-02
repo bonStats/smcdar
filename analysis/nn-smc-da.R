@@ -128,19 +128,92 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
 
 time_steps_to_min_quantile_dist_emp <- function(dist, D, rho, max_T = 10){
 
+  if( all(abs(dist) < 1e-04) ) return(list(prob = 0, iter = Inf, sufficient_iter = F))
+
   nz_index <- abs(dist) > 1e-04
   acceptance_rate <- mean( nz_index )
   ecdf_nz_dist <- ecdf(dist[nz_index])
 
   for(tT in 1:max_T){
 
-    pr_D <- sum( (1:tT) * (1 - ecdf_nz_dist(D/1:tT)) * dbinom(1:tT, size = tT, prob = acceptance_rate) )
+    pr_D <- sum( ( (1 - ecdf_nz_dist(D/1:tT))^(1:tT) ) * dbinom(1:tT, size = tT, prob = acceptance_rate) )
     if(pr_D > rho) break;
 
   }
 
-  if(pr_D < rho) return(NA)
-  else return(pr_D)
+  res <- list(prob = pr_D, iter = tT, sufficient_iter = T)
+
+  if(pr_D < rho) res$sufficient_iter <- F
+
+  return(res)
+
+}
+
+time_steps_to_min_quantile_dist_normal <- function(dist, D, rho, max_T = 10){
+
+  if( all(abs(dist) < 1e-04) ) return(list(prob = 0, iter = Inf, sufficient_iter = F))
+
+  nz_index <- abs(dist) > 1e-04
+  acceptance_rate <- mean( nz_index )
+  n_mean <- mean(dist[nz_index])
+  n_sd <- sqrt(var(dist[nz_index]))
+
+  for(tT in 1:max_T){
+
+    pr_D <- sum( (1 - pnorm(D, mean = (1:tT)*n_mean, sd = sqrt(1:tT)*n_sd)) * dbinom(1:tT, size = tT, prob = acceptance_rate) )
+    if(pr_D > rho) break;
+
+  }
+
+  res <- list(prob = pr_D, iter = tT, sufficient_iter = T)
+
+  if(pr_D < rho) res$sufficient_iter <- F
+
+  return(res)
+
+}
+
+time_steps_to_min_quantile_dist_gamma <- function(dist, D, rho, max_T = 10){
+
+  if( all(abs(dist) < 1e-04) ) return(list(prob = 0, iter = Inf, sufficient_iter = F))
+
+  nz_index <- abs(dist) > 1e-04
+  acceptance_rate <- mean( nz_index )
+  gam_fit <- MASS::fitdistr(dist[nz_index], "gamma", lower = c(0,0))
+  g_rate <- gam_fit$estimate["rate"]
+  g_shape <- gam_fit$estimate["shape"]
+
+  for(tT in 1:max_T){
+
+    pr_D <- sum( (1 - pgamma(D, shape = (1:tT)*g_shape, rate = g_rate)) * dbinom(1:tT, size = tT, prob = acceptance_rate) )
+    if(pr_D > rho) break;
+
+  }
+
+  res <- list(prob = pr_D, iter = tT, sufficient_iter = T)
+
+  if(pr_D < rho) res$sufficient_iter <- F
+
+  return(res)
+
+}
+
+min_da_mh_cost <- function(min_T, surrogate_acceptance, surrogate_cost, full_cost){
+
+  stopifnot(length(min_T) == length(surrogate_acceptance),
+            length(surrogate_cost) == 1,
+            length(full_cost) == 1
+            )
+
+  total_costs <- min_T * (surrogate_acceptance * full_cost + surrogate_cost)
+
+  which.min(total_costs)
+
+}
+
+min_mh_cost <- function(min_T){
+
+  which.min(min_T)
 
 }
 
