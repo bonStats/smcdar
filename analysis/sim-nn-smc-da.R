@@ -93,7 +93,8 @@ best_step_scale <- function(eta, dist, D, rho, max_T = 10, surrogate_acceptance,
   find_min_iter <- switch(model,
                           empirical = time_steps_to_min_quantile_dist_emp,
                           normal = time_steps_to_min_quantile_dist_normal,
-                          gamma = time_steps_to_min_quantile_dist_gamma
+                          gamma = time_steps_to_min_quantile_dist_gamma,
+                          bootstrap = time_steps_to_min_quantile_dist_bootstrap
   )
 
   unq_eta <- unique(eta)
@@ -108,18 +109,18 @@ best_step_scale <- function(eta, dist, D, rho, max_T = 10, surrogate_acceptance,
 
   which_eta_consider <- sapply(min_T_res, getElement, name = "sufficient_iter")
 
-  if(all(!which_eta_consider)) stop("No MH tuning parameters have sufficient iteratios to reach target median.")
+  if(all(!which_eta_consider)) stop("No MH tuning parameters have sufficient iterations to reach target median.")
 
   min_T <- sapply(min_T_res, getElement, name = "iter")
   min_T[!which_eta_consider] <- Inf
 
   if(da){
-    which_total_cost <- min_da_mh_cost(min_T, surrogate_acceptance, surrogate_cost, full_cost)
+    which_mintotal_cost <- min_da_mh_cost(min_T, surrogate_acceptance, surrogate_cost, full_cost)
   } else {
-    which_total_cost <- min_mh_cost(min_T)
+    which_mintotal_cost <- min_mh_cost(min_T)
   }
 
-
+  return(eta[which_mintotal_cost])
 
 }
 

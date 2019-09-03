@@ -198,6 +198,31 @@ time_steps_to_min_quantile_dist_gamma <- function(dist, D, rho, max_T = 10){
 
 }
 
+time_steps_to_min_quantile_dist_bootstrap <- function(dist, D, rho, max_T = 10, boot_samples = 100){
+
+  if( all(abs(dist) < 1e-04) ) return(list(prob = 0, iter = Inf, sufficient_iter = F))
+
+  nz_index <- abs(dist) > 1e-04
+  acceptance_rate <- mean( nz_index )
+
+  boot_prob_gr_D <- vector(mode = "numeric", length = max_T)
+
+  for(tT in 1:max_T){
+
+    boot_prob_gr_D[tT] <- mean(rowSums(matrix(sample(dist[nz_index], size = boot_samples * tT, replace = T), ncol = tT)) > D)
+    pr_D <- sum( ( 1 - boot_prob_gr_D[1:tT] ) * dbinom(1:tT, size = tT, prob = acceptance_rate) )
+    if(pr_D > rho) break;
+
+  }
+
+  res <- list(prob = pr_D, iter = tT, sufficient_iter = T)
+
+  if(pr_D < rho) res$sufficient_iter <- F
+
+  return(res)
+
+}
+
 min_da_mh_cost <- function(min_T, surrogate_acceptance, surrogate_cost, full_cost){
 
   stopifnot(length(min_T) == length(surrogate_acceptance),
