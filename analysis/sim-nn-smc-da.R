@@ -90,15 +90,23 @@ best_step_scale_ejd_v_time <- function(step_scale, dist, comptime){
 
 best_step_scale <- function(eta, dist, D, rho, max_T = 10, surrogate_acceptance, surrogate_cost, full_cost, model = "empirical", da = T){
 
-  find_min_iter <- switch(model,
+  find_min_iter <- switch(model, # nned to make more robust to situations where only 1 is accepted.
                           empirical = time_steps_to_min_quantile_dist_emp,
                           normal = time_steps_to_min_quantile_dist_normal,
                           gamma = time_steps_to_min_quantile_dist_gamma,
                           bootstrap = time_steps_to_min_quantile_dist_bootstrap
   )
 
-  unq_eta <- unique(eta)
+  unq_eta <- sort(unique(eta), decreasing = T)
   min_T_res <- vector(mode = "list", length = length(unq_eta))
+
+  saccept_tb <- tibble(accept = surrogate_acceptance, eta = eta) %>%
+    group_by(eta) %>%
+    summarise(surrogate_accept_rate = mean(accept)) %>%
+    arrange(-eta)
+  # to be same order as unq_eta
+
+  surrogate_acceptance_rate <- saccept_tb$surrogate_accept_rate
 
   for(i in 1:length(unq_eta)){
 
@@ -109,18 +117,23 @@ best_step_scale <- function(eta, dist, D, rho, max_T = 10, surrogate_acceptance,
 
   which_eta_consider <- sapply(min_T_res, getElement, name = "sufficient_iter")
 
-  if(all(!which_eta_consider)) stop("No MH tuning parameters have sufficient iterations to reach target median.")
+  if(all(!which_eta_consider)){
+    warning("No MH tuning parameters have sufficient iterations to reach target median.")
+    which_eta_consider[] <-  T
+    # consider all and find cheapest after 10 iterations,
+    # consider making max_T the maximum iterations possible.
+  }
 
   min_T <- sapply(min_T_res, getElement, name = "iter")
   min_T[!which_eta_consider] <- Inf
 
   if(da){
-    which_mintotal_cost <- min_da_mh_cost(min_T, surrogate_acceptance, surrogate_cost, full_cost)
+    which_mintotal_cost <- min_da_mh_cost(min_T, surrogate_acceptance_rate, surrogate_cost, full_cost)
   } else {
     which_mintotal_cost <- min_mh_cost(min_T)
   }
 
-  return(eta[which_mintotal_cost])
+  return(list(step_scale = eta[which_mintotal_cost], expected_iter = min_T[which_mintotal_cost]))
 
 }
 
@@ -148,7 +161,7 @@ nn_posterior <- function(y, X, sigma, tau){
 g_pars <- list(N = 100, N_approx = 100, true_beta = c(0, 0.5, -1.5, 1.5, -3),
                log_prior = log_prior, log_like = log_like, log_like_approx = log_like_approx,
                draw_prior = draw_prior, optimise_pre_approx_llhood_transformation = nn_optimise_pre_approx_llhood_transformation,
-               best_step_scale_ejd_v_time = best_step_scale_ejd_v_time
+               best_step_scale = best_step_scale
 )
 
 sim_settings <- rep(list(list(f_pars = NULL, g_pars = g_pars)), 2)
@@ -157,16 +170,20 @@ sim_settings[[1]]$f_pars <- list(
   num_p = 100,
   step_scale_set = c(0.25, 0.4, 0.55, 0.7),
   b_s_start = rep(0, 10),
-  refresh_ejd_threshold = 1,
-  approx_ll_bias = 1
+  approx_ll_bias = 1,
+  bss_model = "normal",
+  bss_D = 1,
+  bss_rho = 0.5
 )
 
 sim_settings[[2]]$f_pars <- list(
   num_p = 200,
   step_scale_set =  c(0.25, 0.4, 0.55, 0.7),
   b_s_start = rep(0, 10),
-  refresh_ejd_threshold = 1,
-  approx_ll_bias = 1
+  approx_ll_bias = 1,
+  bss_model = "normal",
+  bss_D = 1,
+  bss_rho = 0.5
 )
 
 simulate_regr <- function(N, beta){
@@ -199,6 +216,12 @@ run_sim <- function(ss, verbose = F){
                                                               y = sim$y[1:ss$g_pars$N_approx],
                                                               bias = ss$f_pars$approx_ll_bias)
 
+  best_step_scale_f <- function(eta, dist, surrogate_acceptance, surrogate_cost, full_cost, da = T){
+    best_step_scale(eta = eta, dist = dist, D = ss$f_pars$bss_D, rho = ss$f_pars$bss_rho, max_T = 10,
+                    surrogate_acceptance = surrogate_acceptance, surrogate_cost = surrogate_cost, full_cost = full_cost,
+                    model = ss$f_pars$bss_model, da = da)
+  }
+
   ## run
   cat("smc da")
   smc_da <- with(ss$f_pars, run_smc_da(
@@ -206,13 +229,13 @@ run_sim <- function(ss, verbose = F){
     num_p = num_p,
     step_scale_set = step_scale_set,
     b_s_start = b_s_start,
-    refresh_ejd_threshold = refresh_ejd_threshold,
+    refresh_ejd_threshold = ss$f_pars$bss_D,
     log_prior = ss$g_pars$log_prior,
     log_like = log_like,
     log_like_approx = log_like_approx,
     draw_prior = ss$g_pars$draw_prior,
     optimise_pre_approx_llhood_transformation =  ss$g_pars$optimise_pre_approx_llhood_transformation,
-    best_step_scale_ejd_v_time = ss$g_pars$best_step_scale_ejd_v_time,
+    find_best_step_scale = best_step_scale_f,
     verbose = verbose
   )
   )
@@ -222,13 +245,13 @@ run_sim <- function(ss, verbose = F){
     num_p = num_p,
     step_scale_set = step_scale_set,
     b_s_start = b_s_start,
-    refresh_ejd_threshold = refresh_ejd_threshold,
+    refresh_ejd_threshold = ss$f_pars$bss_D,
     log_prior = ss$g_pars$log_prior,
     log_like = log_like,
     log_like_approx = log_like_approx,
     draw_prior = ss$g_pars$draw_prior,
     optimise_pre_approx_llhood_transformation =  NULL,
-    best_step_scale_ejd_v_time = ss$g_pars$best_step_scale_ejd_v_time,
+    find_best_step_scale = best_step_scale_f,
     verbose = verbose
   )
    )
@@ -239,13 +262,13 @@ run_sim <- function(ss, verbose = F){
     num_p = num_p,
     step_scale_set = step_scale_set,
     b_s_start = b_s_start,
-    refresh_ejd_threshold = refresh_ejd_threshold,
+    refresh_ejd_threshold = ss$f_pars$bss_D,
     log_prior = ss$g_pars$log_prior,
     log_like = log_like,
     log_like_approx = log_like_approx,
     draw_prior = ss$g_pars$draw_prior,
     optimise_pre_approx_llhood_transformation =  NULL,
-    best_step_scale_ejd_v_time = ss$g_pars$best_step_scale_ejd_v_time,
+    find_best_step_scale = best_step_scale_f,
     verbose = verbose
   )
   )

@@ -57,11 +57,15 @@ mh_step <- function(new_particles, old_particles, var, temp, loglike, type){
 
   dist <- sqrt( maha_dist ) * accept
 
+  avg_full_like_cost <- mean(attr(new_loglike_type, "comptime"))
+
   return(list(
     pre_accept = NA,
     accept = accept,
     dist = dist,
-    comp_time = attr(new_loglike_type, "comptime")
+    comp_time = attr(new_loglike_type, "comptime"),
+    avg_full_like_cost = avg_full_like_cost,
+    avg_surr_like_cost = NA
   ))
 
 }
@@ -111,8 +115,13 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
 
   comp_time[accept_1] <- comp_time[accept_1] +
     attr(full_post_new_particles, "comptime") +
-    attr(approx_trans_llh_new_particles, "comptime") +
-    + attr(approx_trans_llh_new_particles, "comptime")
+    attr(approx_trans_llh_new_particles, "comptime")
+
+  avg_full_like_cost <- mean( attr(full_post_new_particles, "comptime") )
+  avg_surr_like_cost <-
+    mean(attr(approx_trans_post_new_particles, "comptime")) +
+    mean(attr(approx_trans_post_old_particles, "comptime")) +
+    mean(attr(approx_trans_llh_new_particles, "comptime"))
 
   dist <- sqrt( maha_dist ) * accept
 
@@ -120,7 +129,9 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
     pre_accept = accept_1,
     accept = accept,
     dist = dist,
-    comp_time = comp_time
+    comp_time = comp_time,
+    avg_full_like_cost = avg_full_like_cost,
+    avg_surr_like_cost = avg_surr_like_cost
   ))
 
 }
@@ -245,7 +256,7 @@ min_mh_cost <- function(min_T){
 run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ejd_threshold, b_s_start,
                        log_prior, log_like, log_like_approx, draw_prior,
                        optimise_pre_approx_llhood_transformation,
-                       best_step_scale_ejd_v_time,
+                       find_best_step_scale,
                        verbose = F
 ){
 
@@ -346,7 +357,14 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
     curr_partl <- replace_particles(new_particles = proposed_partl, old_particles = resampled_partl, index = mh_res$accept)
 
     # optimise mh step
-    best_step_scale <- best_step_scale_ejd_v_time(step_scale = sample_step_scale, dist = mh_res$dist, comptime = mh_res$comp_time)
+   # best_step_scale <- find_best_step_scale(step_scale = sample_step_scale, dist = mh_res$dist, comptime = mh_res$comp_time)
+    best_ss <- find_best_step_scale(eta = sample_step_scale,
+                                            dist = mh_res$dist,
+                                            surrogate_acceptance = mh_res$pre_accept,
+                                            surrogate_cost = mh_res$avg_surr_like_cost,
+                                            full_cost = mh_res$avg_full_like_cost,
+                                            da = use_da)
+
     accept_prop <- mean(mh_res$accept)
     pre_accept_prop <- mean(mh_res$pre_accept)
 
@@ -354,10 +372,10 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
     total_dist <- mh_res$dist
 
     mh_step_count <- 1
-
+##### TURN TIMING OFF
     # update additional times with best_step_scale
     while(median(total_dist) < refresh_ejd_threshold){
-      proposed_partl <- mvn_jitter(particles = curr_partl, step_scale = best_step_scale$step_scale, var = mvn_var$cov)
+      proposed_partl <- mvn_jitter(particles = curr_partl, step_scale = best_ss$step_scale, var = mvn_var$cov)
       #mh_res <- mh_func(new_particles = proposed_partl, old_particles = curr_partl, var = mvn_var$cov, temp = tail(temps,1) )
       if(use_da){
         mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans)
@@ -382,8 +400,8 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
       cat("*iter:", i,
           "*temp:", round(tail(temps,1),3), "\n\t",
           "*llh-target:", vec_summary(target_log_post),
-          "*step-scale:", best_step_scale$step_scale,
-          "*step-scale-dist:", round(best_step_scale$dist,3),
+          "*step-scale:", best_ss$step_scale,
+          "*E-mh-steps:", best_ss$expected_iter,
           "*mh-steps:", mh_step_count,"\n\t",
           "*pre-accept-pr:", round(mean(pre_accept_prop[-1]),3),
           "*accept-pr:", round(mean(accept_prop[-1]),3),
@@ -396,8 +414,8 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
                            temp = tail(temps,1),
                            llh_target = target_log_post,
                            approx_llh_pre_trans = if(use_da){ pre_trans } else {NULL},
-                           step_scale = best_step_scale$step_scale,
-                           step_scale_dist = best_step_scale$dist,
+                           step_scale = best_ss$step_scale,
+                           expected_mh_steps = best_ss$expected_iter,
                            mh_steps = mh_step_count,
                            pre_accept_pr = pre_accept_prop,
                            accept_pr = accept_prop,
