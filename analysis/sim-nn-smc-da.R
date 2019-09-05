@@ -12,6 +12,7 @@ library(dplyr)
 library(future)
 #library(future.apply)
 library(furrr)
+library(mvtnorm)
 
 #### Settings ####
 
@@ -120,7 +121,7 @@ best_step_scale <- function(eta, dist, D, rho, max_T = 10, surrogate_acceptance,
   if(all(!which_eta_consider)){
     warning("No MH tuning parameters have sufficient iterations to reach target median.")
     which_eta_consider[] <-  T
-    # consider all and find cheapest after 10 iterations,
+    # consider all but last and find cheapest after 10 iterations,
     # consider making max_T the maximum iterations possible.
   }
 
@@ -145,14 +146,19 @@ nn_posterior <- function(y, X, sigma, tau){
   mu <- solve(XtX + diag(1/(tau^2), nrow = p), Xty)
   V <- solve(XtX + diag(1/(tau^2), nrow = p)) * (sigma^2)
 
-  log_z_lhood <- -(n/2) * ( log(2) + log(pi) + 2 * log(sigma) )
-  log_z_prior <- -(p/2) * ( log(2) + log(pi) + 2 * log(tau) )
-  log_z_post <- -(p/2) * ( (log(2) + log(pi)) + log(det(V)) )
+  # log_z_lhood <- -( n/2 ) * ( log(2) + log(pi) + 2 * log(sigma) )
+  # log_z_prior <- -( p/2 ) * ( log(2) + log(pi) + 2 * log(tau) )
+  # log_z_post <-  -( p/2 ) * ( log(2) + log(pi) ) - ( log(det(V))/2 )
+
+  log_z <-
+    sum( dnorm(x = rep(0, times = p), mean = rep(0, times = p), sd = tau, log = T) ) +
+    sum( dnorm(x = y, mean = rep(0, times = n), sd = sigma, log = T) ) -
+    sum( dmvnorm(x = rep(0, times = p), mean = mu, sigma = V, log = T) )
 
   return(list(
     mu = mu,
     var = V,
-    log_z =  log_z_prior + log_z_lhood - log_z_post
+    log_z = log_z # log_z_prior + log_z_lhood - log_z_post
   ))
 
 }

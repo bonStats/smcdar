@@ -8,8 +8,6 @@ vec_summary <- function(x){
 
 }
 
-logit <- function(x) exp(x) / (1 + exp(x))
-ilogit <- function(x) log(x) - log(1 - x)
 ####
 
 #### SMC ####
@@ -43,10 +41,10 @@ log_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, log_p
 
 }
 
-mh_step <- function(new_particles, old_particles, var, temp, loglike, type){
+mh_step <- function(new_particles, old_particles, var, temp, loglike, type, time_on = T){
   # using MVN (symmetric kernel)
 
-  new_loglike_type <- papply(new_particles, fun = loglike, temp = temp, type = type, comp_time = T)
+  new_loglike_type <- papply(new_particles, fun = loglike, temp = temp, type = type, comp_time = T & time_on)
   old_loglike_type <- papply(old_particles, fun = loglike, temp = temp, type = type, comp_time = F)
 
   accept <- exp(
@@ -57,20 +55,26 @@ mh_step <- function(new_particles, old_particles, var, temp, loglike, type){
 
   dist <- sqrt( maha_dist ) * accept
 
-  avg_full_like_cost <- mean(attr(new_loglike_type, "comptime"))
+  if(time_on){
+    avg_full_like_cost <- mean(attr(new_loglike_type, "comptime"))
+    comp_time <- attr(new_loglike_type, "comptime")
+  } else {
+    avg_full_like_cost <- NA
+    comp_time <- NA
+  }
 
   return(list(
     pre_accept = NA,
     accept = accept,
     dist = dist,
-    comp_time = attr(new_loglike_type, "comptime"),
+    comp_time = comp_time,
     avg_full_like_cost = avg_full_like_cost,
     avg_surr_like_cost = NA
   ))
 
 }
 
-mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pre_trans = identity, timing_groups){
+mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pre_trans = identity, timing_groups, time_on = T){
   # using MVN (symmetric kernel)
 
   # uses http://aimsciences.org//article/doi/10.3934/fods.2019005
@@ -82,8 +86,8 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
   #trans_new_particles <- t(papply(new_particles, pre_trans))
   #trans_old_particles <- t(papply(old_particles, pre_trans))
 
-  approx_trans_post_new_particles <- papply(new_particles, fun = loglike, lh_trans = pre_trans, type = "approx_posterior", temp = temp, comp_time = T)
-  approx_trans_post_old_particles <- papply(old_particles, fun = loglike, lh_trans = pre_trans, type = "approx_posterior", temp = temp, comp_time = T)
+  approx_trans_post_new_particles <- papply(new_particles, fun = loglike, lh_trans = pre_trans, type = "approx_posterior", temp = temp, comp_time = T & time_on)
+  approx_trans_post_old_particles <- papply(old_particles, fun = loglike, lh_trans = pre_trans, type = "approx_posterior", temp = temp, comp_time = T & time_on)
 
   # approximate likelihood threshold (surrogate model)
   log_rho_tilde_1 <- approx_trans_post_new_particles - approx_trans_post_old_particles
@@ -93,10 +97,10 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
 
   accept_1 <- exp(log_rho_1) > runif(num_particles(new_particles))
 
-  full_post_new_particles <- papply(new_particles[accept_1,,drop = F], fun = loglike, type = "full_likelihood", temp = temp, comp_time = T)
+  full_post_new_particles <- papply(new_particles[accept_1,,drop = F], fun = loglike, type = "full_likelihood", temp = temp, comp_time = T & time_on)
   full_post_old_particles <- papply(old_particles[accept_1,,drop = F], fun = loglike, type = "full_likelihood", temp = temp, comp_time = F) # should be memoised.
-  approx_trans_llh_new_particles <- papply(new_particles[accept_1,,drop = F], fun = loglike, lh_trans = pre_trans, type = "approx_likelihood", temp = temp, comp_time = T)
-  approx_trans_llh_old_particles <- papply(old_particles[accept_1,,drop = F], fun = loglike, lh_trans = pre_trans, type = "approx_likelihood", temp = temp, comp_time = T)
+  approx_trans_llh_new_particles <- papply(new_particles[accept_1,,drop = F], fun = loglike, lh_trans = pre_trans, type = "approx_likelihood", temp = temp, comp_time = T & time_on)
+  approx_trans_llh_old_particles <- papply(old_particles[accept_1,,drop = F], fun = loglike, lh_trans = pre_trans, type = "approx_likelihood", temp = temp, comp_time = T & time_on)
 
   log_rho_tilde_2 <-
     ( full_post_new_particles - full_post_old_particles ) -
@@ -111,6 +115,8 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
 
   maha_dist <- papply(new_particles - old_particles, function(x){t(x) %*% solve(var, x)})
 
+  if(time_on){
+
   comp_time <- attr(approx_trans_post_new_particles, "comptime") + attr(approx_trans_post_old_particles, "comptime")
 
   comp_time[accept_1] <- comp_time[accept_1] +
@@ -122,6 +128,12 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
     mean(attr(approx_trans_post_new_particles, "comptime")) +
     mean(attr(approx_trans_post_old_particles, "comptime")) +
     mean(attr(approx_trans_llh_new_particles, "comptime"))
+
+  } else {
+    comp_time <- NA
+    avg_full_like_cost <- NA
+    avg_surr_like_cost <- NA
+  }
 
   dist <- sqrt( maha_dist ) * accept
 
@@ -372,15 +384,15 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
     total_dist <- mh_res$dist
 
     mh_step_count <- 1
-##### TURN TIMING OFF
+
     # update additional times with best_step_scale
     while(median(total_dist) < refresh_ejd_threshold){
       proposed_partl <- mvn_jitter(particles = curr_partl, step_scale = best_ss$step_scale, var = mvn_var$cov)
       #mh_res <- mh_func(new_particles = proposed_partl, old_particles = curr_partl, var = mvn_var$cov, temp = tail(temps,1) )
       if(use_da){
-        mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans)
+        mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans, time_on = F)
       } else {
-        mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
+        mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"), time_on = F)
       }
       curr_partl <- replace_particles(new_particles = proposed_partl, old_particles = curr_partl, index = mh_res$accept)
       accept_prop <- c(accept_prop, mean(mh_res$accept))
