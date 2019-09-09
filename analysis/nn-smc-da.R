@@ -10,6 +10,29 @@ vec_summary <- function(x){
 
 logit <- function(x) exp(x) / (1 + exp(x))
 ilogit <- function(x) log(x) - log(1 - x)
+
+get_hash_memoise <- function(f, x){
+
+  called_args <- list(x = x)
+  default_args <- structure(list(), .Names = character(0))
+  args <- c(lapply(called_args, eval, parent.frame()),
+            lapply(default_args, eval, envir = environment()))
+
+  get("_cache", envir = environment(f))$digest(
+    c(
+      body(get("_f", envir = environment(f))),
+      args,
+      list()
+      )
+    )
+}
+
+has_hash_value_memoise <- function(f, hash){
+
+  get("_cache", envir = environment(f))$has_key(hash)
+
+}
+
 ####
 
 #### SMC ####
@@ -21,14 +44,20 @@ log_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, log_p
   mem_log_likelihood_approx <-  memoise::memoise(log_like_approx)
   mem_log_prior <- memoise::memoise(log_prior)
 
-  #unique_x <- NULL
+  unique_x <- NULL
 
   f <- function(x, temp = 1, lh_trans = identity, type = "full_posterior", ...){
 
-    # if(type %in% c("full_posterior", "full_approx_lhood_ratio", "full_likelihood", "full_posterior")){ # if will evaulate true likelihood
-    #   new_unique_x <- rbind(unique_x, x) # matrix
-    #   unique_x <<- unique(new_unique_x) # unique rows of matrix
-    # }
+    # make matrix of x values memoised...
+    if(type %in% c("full_posterior", "full_approx_lhood_ratio", "full_likelihood")){ # if will evaulate true likelihood
+
+      hash_key <- get_hash_memoise(f = mem_log_likelihood, x = x)
+
+      if( !has_hash_value_memoise(f = mem_log_likelihood, hash = hash_key) ){
+        unique_x <<- rbind(unique_x, x) # matrix
+      }
+
+    }
 
     switch(type,
            approx_posterior = temp * mem_log_likelihood_approx(lh_trans(x), ...) + mem_log_prior(x, ...),
@@ -40,6 +69,8 @@ log_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, log_p
     )
 
   }
+
+  return(f)
 
 }
 
@@ -340,7 +371,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
 
       # pre-tranformation for approx likelihood
       if(tail(temps,1) > 0.05){
-        partial_optim <- optimise_pre_approx_llhood_transformation(particles = curr_partl, loglike = log_ann_post_ctmc_da, temp = tail(temps, 1), b_s_start = b_s_start)
+        partial_optim <- optimise_pre_approx_llhood_transformation(particles = curr_partl, loglike = log_ann_post_ctmc_da, temp = tail(temps, 1), max_iter = ceiling(tail(temps, 1) * 100), b_s_start = NULL)
         pre_trans <- function(x){ (x - partial_optim$par[1:5]) / exp(partial_optim$par[6:10]) }
         b_s_start <- partial_optim$par
       } else {

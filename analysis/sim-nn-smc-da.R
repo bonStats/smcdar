@@ -36,13 +36,13 @@ log_like <- function(beta, X, y){
 
 }
 
-log_like_approx <- function(beta, X, y, bias){
+log_like_approx <- function(beta, X, y, bias_mean, bias_scale = 1){
 
-  sum( dnorm(y, mean = X %*% ( (beta + bias) / 0.5) , sd = 1, log = T) )
+  sum( dnorm(y, mean = X %*% ( bias_scale * beta + bias_mean) , sd = 1, log = T) )
 
 }
 
-nn_optimise_pre_approx_llhood_transformation <- function(particles, b_s_start, loglike, temp){
+particle_optimise_pre_approx_llhood_transformation <- function(particles, b_s_start, loglike, temp, max_iter = 20, ...){
 
   #log_theta is matrix
   # should only send values of log_like that have been cached already
@@ -72,7 +72,44 @@ nn_optimise_pre_approx_llhood_transformation <- function(particles, b_s_start, l
 
   }
 
-  optim(par = b_s_start, fn = topt, control = list(maxit = 5), method = "BFGS")
+  optim(par = b_s_start, fn = topt, control = list(maxit = max_iter), method = "BFGS")
+
+}
+
+visited_optimise_pre_approx_llhood_transformation <- function(b_s_start, loglike, temp, max_iter = 20, ...){
+
+  # should only send values of log_like that have been cached already
+  unique_x <- get("unique_x", envir = environment(loglike))
+  true_ll <- apply(unique_x, MARGIN = 1, loglike, type = "full_likelihood", temp = temp)
+
+  len <- ncol(unique_x)
+
+  if(missing(b_s_start) | is.null(b_s_start)){
+
+    b_s_start <- rep(0, times = len * 2)
+
+  }
+
+  topt <- function(b_s){
+
+    b_mat <- matrix(b_s[1:len], ncol = len, nrow = nrow(unique_x), byrow = T)
+    s_mat <- matrix(b_s[(len+1):(2*len)], ncol = len, nrow = nrow(unique_x), byrow = T)
+
+    approx_ll <- apply((unique_x - b_mat)/exp(s_mat), MARGIN = 1, loglike, type = "approx_likelihood", temp = temp)
+
+    keep_ll <- is.finite(approx_ll)
+
+    dm_true_ll <- true_ll[keep_ll] - mean(true_ll[keep_ll])
+    dm_approx_ll <- approx_ll[keep_ll] - mean(approx_ll[keep_ll])
+
+    # Least-squares
+    sum(
+      ( dm_true_ll - dm_approx_ll )^2
+    )
+
+  }
+
+  optim(par = b_s_start, fn = topt, control = list(maxit = max_iter), method = "BFGS")
 
 }
 
@@ -160,7 +197,7 @@ nn_posterior <- function(y, X, sigma, tau){
 # true_theta = (birth rate prey, death rate prey/ birth rate pred, death rate pred)
 g_pars <- list(N = 100, N_approx = 100, true_beta = c(0, 0.5, -1.5, 1.5, -3),
                log_prior = log_prior, log_like = log_like, log_like_approx = log_like_approx,
-               draw_prior = draw_prior, optimise_pre_approx_llhood_transformation = nn_optimise_pre_approx_llhood_transformation,
+               draw_prior = draw_prior, optimise_pre_approx_llhood_transformation = visited_optimise_pre_approx_llhood_transformation,
                best_step_scale = best_step_scale
 )
 
@@ -170,7 +207,8 @@ sim_settings[[1]]$f_pars <- list(
   num_p = 100,
   step_scale_set = c(0.25, 0.4, 0.55, 0.7),
   b_s_start = rep(0, 10),
-  approx_ll_bias = 1,
+  approx_ll_bias_mean = 1,
+  approx_ll_bias_scale = 1.1,
   bss_model = "normal",
   bss_D = 1,
   bss_rho = 0.5
@@ -180,7 +218,8 @@ sim_settings[[2]]$f_pars <- list(
   num_p = 200,
   step_scale_set =  c(0.25, 0.4, 0.55, 0.7),
   b_s_start = rep(0, 10),
-  approx_ll_bias = 1,
+  approx_ll_bias_mean = 1,
+  approx_ll_bias_scale = 1.1,
   bss_model = "normal",
   bss_D = 1,
   bss_rho = 0.5
@@ -214,7 +253,8 @@ run_sim <- function(ss, verbose = F){
   log_like <- function(beta) ss$g_pars$log_like(beta, X = sim$X, y = sim$y)
   log_like_approx <- function(beta) ss$g_pars$log_like_approx(beta, X = sim$X[1:ss$g_pars$N_approx,],
                                                               y = sim$y[1:ss$g_pars$N_approx],
-                                                              bias = ss$f_pars$approx_ll_bias)
+                                                              bias_mean = ss$f_pars$approx_ll_bias_mean,
+                                                              bias_scale = ss$f_pars$approx_ll_bias_scale)
 
   best_step_scale_f <- function(eta, dist, surrogate_acceptance, surrogate_cost, full_cost, da = T){
     best_step_scale(eta = eta, dist = dist, D = ss$f_pars$bss_D, rho = ss$f_pars$bss_rho, max_T = 10,
@@ -286,7 +326,7 @@ run_sim <- function(ss, verbose = F){
 
 ####
 
-res <- run_sim(ss = sim_settings[[2]], verbose = T)
+res <- run_sim(ss = sim_settings[[1]], verbose = T)
 
 #res <- future_map(1:100, .f = function(x) , .progress = T)
 
