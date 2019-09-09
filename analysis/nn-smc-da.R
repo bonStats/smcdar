@@ -8,7 +8,6 @@ vec_summary <- function(x){
 
 }
 
-<<<<<<< HEAD
 logit <- function(x) exp(x) / (1 + exp(x))
 ilogit <- function(x) log(x) - log(1 - x)
 
@@ -34,8 +33,6 @@ has_hash_value_memoise <- function(f, hash){
 
 }
 
-=======
->>>>>>> f78b58206d73bdad3c737f509c7e04b9204cc54f
 ####
 
 #### SMC ####
