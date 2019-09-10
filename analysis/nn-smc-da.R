@@ -11,9 +11,9 @@ vec_summary <- function(x){
 logit <- function(x) exp(x) / (1 + exp(x))
 ilogit <- function(x) log(x) - log(1 - x)
 
-get_hash_memoise <- function(f, x){
+get_hash_memoise <- function(f, x, arg_name){
 
-  called_args <- list(x = x)
+  called_args <- setNames(list(x), arg_name)
   default_args <- structure(list(), .Names = character(0))
   args <- c(lapply(called_args, eval, parent.frame()),
             lapply(default_args, eval, envir = environment()))
@@ -45,13 +45,15 @@ log_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, log_p
   mem_log_prior <- memoise::memoise(log_prior)
 
   unique_x <- NULL
+  unique_llh_val <- NULL
+  x_arg_name <- names(formals(mem_log_likelihood))
 
   f <- function(x, temp = 1, lh_trans = identity, type = "full_posterior", ...){
 
     # make matrix of x values memoised...
     if(type %in% c("full_posterior", "full_approx_lhood_ratio", "full_likelihood")){ # if will evaulate true likelihood
 
-      hash_key <- get_hash_memoise(f = mem_log_likelihood, x = x)
+      hash_key <- get_hash_memoise(f = mem_log_likelihood, x = x, arg_name = x_arg_name)
 
       if( !has_hash_value_memoise(f = mem_log_likelihood, hash = hash_key) ){
         unique_x <<- rbind(unique_x, x) # matrix

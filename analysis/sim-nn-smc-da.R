@@ -77,13 +77,26 @@ particle_optimise_pre_approx_llhood_transformation <- function(particles, b_s_st
 
 }
 
-visited_optimise_pre_approx_llhood_transformation <- function(b_s_start, loglike, temp, max_iter = 20, ...){
+visited_optimise_pre_approx_llhood_transformation <- function(b_s_start, loglike, temp, max_iter = 20, max_strata_size = 25, ...){
 
   # should only send values of log_like that have been cached already
-  unique_x <- get("unique_x", envir = environment(loglike))
-  true_ll <- apply(unique_x, MARGIN = 1, loglike, type = "full_likelihood", temp = temp)
+  unique_x_val <- get("unique_x", envir = environment(loglike))
+  true_ll_val <- apply(unique_x_val, MARGIN = 1, loglike, type = "full_likelihood", temp = 1)
 
-  len <- ncol(unique_x)
+  tlv_quant <- quantile(true_ll_val, probs = 0:10/10)
+  tlv_quant <- cbind(lower = tlv_quant[-11], upper = tlv_quant[-1])
+
+  strata_size <- min(max_strata_size, floor(length(true_ll_val)/10) )
+
+  true_ll_sample_ind <- c(apply(tlv_quant, MARGIN = 1, function(l_u){
+    sample(which(l_u[1] <= true_ll_val & true_ll_val <= l_u[2]),
+           size = strata_size, replace = F)
+  }))
+
+  xval <- unique_x_val[true_ll_sample_ind,]
+  true_ll <- true_ll_val[true_ll_sample_ind]
+
+  len <- ncol(xval)
 
   if(missing(b_s_start) | is.null(b_s_start)){
 
@@ -93,10 +106,10 @@ visited_optimise_pre_approx_llhood_transformation <- function(b_s_start, loglike
 
   topt <- function(b_s){
 
-    b_mat <- matrix(b_s[1:len], ncol = len, nrow = nrow(unique_x), byrow = T)
-    s_mat <- matrix(b_s[(len+1):(2*len)], ncol = len, nrow = nrow(unique_x), byrow = T)
+    b_mat <- matrix(b_s[1:len], ncol = len, nrow = nrow(xval), byrow = T)
+    s_mat <- matrix(b_s[(len+1):(2*len)], ncol = len, nrow = nrow(xval), byrow = T)
 
-    approx_ll <- apply((unique_x - b_mat)/exp(s_mat), MARGIN = 1, loglike, type = "approx_likelihood", temp = temp)
+    approx_ll <- apply((xval - b_mat)/exp(s_mat), MARGIN = 1, loglike, type = "approx_likelihood", temp = 1)
 
     keep_ll <- is.finite(approx_ll)
 
