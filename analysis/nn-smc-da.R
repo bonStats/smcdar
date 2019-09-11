@@ -301,7 +301,7 @@ min_mh_cost <- function(min_T){
 }
 
 run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ejd_threshold, b_s_start,
-                       log_prior, log_like, log_like_approx, draw_prior,
+                       log_prior, log_like, log_like_approx, Dlog_like_approx_Dbeta, draw_prior,
                        optimise_pre_approx_llhood_transformation,
                        find_best_step_scale,
                        verbose = F
@@ -387,7 +387,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
 
       # pre-tranformation for approx likelihood
       if(tail(temps,1) > 0.05){
-        partial_optim <- optimise_pre_approx_llhood_transformation(particles = curr_partl, loglike = log_ann_post_ctmc_da, temp = tail(temps, 1), max_iter = ceiling(tail(temps, 1) * 100), b_s_start = NULL)
+        partial_optim <- optimise_pre_approx_llhood_transformation(particles = curr_partl, loglike = log_ann_post_ctmc_da, D_approx_log_like = Dlog_like_approx_Dbeta, temp = tail(temps, 1), max_iter = ceiling(tail(temps, 1) * 100), b_s_start = NULL)
         pre_trans <- function(x){ (x - partial_optim$par[1:5]) / exp(partial_optim$par[6:10]) }
         b_s_start <- partial_optim$par
       } else {

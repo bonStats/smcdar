@@ -43,6 +43,14 @@ log_like_approx <- function(beta, X, y, bias_mean, bias_scale = 1){
 
 }
 
+Dlog_like_approx_Dbeta <- function(beta, X, y, bias_mean, bias_scale = 1){
+  # sd = 1
+  mu = X %*% ( bias_scale * beta + bias_mean)
+
+  as.vector( bias_scale * crossprod(X, y - mu) )
+
+}
+
 particle_optimise_pre_approx_llhood_transformation <- function(particles, b_s_start, loglike, temp, max_iter = 20, ...){
 
   #log_theta is matrix
@@ -216,6 +224,7 @@ nn_posterior <- function(y, X, sigma, tau){
 # true_theta = (birth rate prey, death rate prey/ birth rate pred, death rate pred)
 g_pars <- list(N = 100, N_approx = 100, true_beta = c(0, 0.5, -1.5, 1.5, -3),
                log_prior = log_prior, log_like = log_like, log_like_approx = log_like_approx,
+               Dlog_like_approx_Dbeta = Dlog_like_approx_Dbeta,
                draw_prior = draw_prior, optimise_pre_approx_llhood_transformation = visited_optimise_pre_approx_llhood_transformation,
                best_step_scale = best_step_scale
 )
@@ -269,11 +278,16 @@ run_sim <- function(ss, verbose = F){
 
   source("analysis/nn-smc-da.R")
 
-  log_like <- function(beta) ss$g_pars$log_like(beta, X = sim$X, y = sim$y)
-  log_like_approx <- function(beta) ss$g_pars$log_like_approx(beta, X = sim$X[1:ss$g_pars$N_approx,],
+  log_like_f <- function(beta) ss$g_pars$log_like(beta, X = sim$X, y = sim$y)
+  log_like_approx_f <- function(beta) ss$g_pars$log_like_approx(beta, X = sim$X[1:ss$g_pars$N_approx,],
                                                               y = sim$y[1:ss$g_pars$N_approx],
                                                               bias_mean = ss$f_pars$approx_ll_bias_mean,
                                                               bias_scale = ss$f_pars$approx_ll_bias_scale)
+
+  Dlog_like_approx_Dbeta_f <- function(beta) ss$g_pars$Dlog_like_approx_Dbeta(beta, X = sim$X[1:ss$g_pars$N_approx,],
+                                                                            y = sim$y[1:ss$g_pars$N_approx],
+                                                                            bias_mean = ss$f_pars$approx_ll_bias_mean,
+                                                                            bias_scale = ss$f_pars$approx_ll_bias_scale)
 
   best_step_scale_f <- function(eta, dist, surrogate_acceptance, surrogate_cost, full_cost, da = T){
     best_step_scale(eta = eta, dist = dist, D = ss$f_pars$bss_D, rho = ss$f_pars$bss_rho, max_T = 10,
@@ -290,8 +304,9 @@ run_sim <- function(ss, verbose = F){
     b_s_start = b_s_start,
     refresh_ejd_threshold = ss$f_pars$bss_D,
     log_prior = ss$g_pars$log_prior,
-    log_like = log_like,
-    log_like_approx = log_like_approx,
+    log_like = log_like_f,
+    log_like_approx = log_like_approx_f,
+    Dlog_like_approx_Dbeta = Dlog_like_approx_Dbeta_f,
     draw_prior = ss$g_pars$draw_prior,
     optimise_pre_approx_llhood_transformation =  ss$g_pars$optimise_pre_approx_llhood_transformation,
     find_best_step_scale = best_step_scale_f,
@@ -308,6 +323,7 @@ run_sim <- function(ss, verbose = F){
     log_prior = ss$g_pars$log_prior,
     log_like = log_like,
     log_like_approx = log_like_approx,
+    Dlog_like_approx_Dbeta = NULL,
     draw_prior = ss$g_pars$draw_prior,
     optimise_pre_approx_llhood_transformation =  NULL,
     find_best_step_scale = best_step_scale_f,
@@ -325,6 +341,7 @@ run_sim <- function(ss, verbose = F){
     log_prior = ss$g_pars$log_prior,
     log_like = log_like,
     log_like_approx = log_like_approx,
+    Dlog_like_approx_Dbeta = NULL,
     draw_prior = ss$g_pars$draw_prior,
     optimise_pre_approx_llhood_transformation =  NULL,
     find_best_step_scale = best_step_scale_f,
