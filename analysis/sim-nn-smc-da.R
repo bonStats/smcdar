@@ -135,6 +135,146 @@ visited_optimise_pre_approx_llhood_transformation <- function(b_s_start, loglike
 
 }
 
+visit_gr_optimise_pre_approx_llhood_transformation <- function(par_start, loglike, D_approx_log_like, temp, max_iter = 40, max_strata_size = 20, ...){
+
+  # should only send values of log_like that have been cached already
+  unique_x_val <- get("unique_x", envir = environment(loglike))
+  true_ll_val <- apply(unique_x_val, MARGIN = 1, loglike, type = "full_likelihood", temp = 1)
+
+  tlv_quant <- quantile(true_ll_val, probs = 0:10/10)
+  tlv_quant <- cbind(lower = tlv_quant[-11], upper = tlv_quant[-1])
+
+  strata_size <- min(max_strata_size, floor(length(true_ll_val)/10) )
+
+  true_ll_sample_ind <- c(apply(tlv_quant, MARGIN = 1, function(l_u){
+    sample(which(l_u[1] <= true_ll_val & true_ll_val <= l_u[2]),
+           size = strata_size, replace = F)
+  }))
+
+  xval <- unique_x_val[true_ll_sample_ind,]
+  true_ll <- true_ll_val[true_ll_sample_ind]
+
+  len <- ncol(xval)
+
+  if(missing(par_start) | is.null(par_start)){
+
+    par_start <- rep(0, times = len * 2 + 1)
+
+  }
+
+
+  gropt <- function(vr, penalty){
+    # xval, loglike, len
+    mu <- vr[1]
+    b <- vr[2:(len+1)]
+    s <- vr[(len+2):(2*len + 1)]
+
+
+    beta_trf <- apply(xval, MARGIN = 1, function(x) exp(-s) * (x - b) )
+    ll_beta_trf <- apply(beta_trf, MARGIN = 2, loglike, type = "approx_likelihood", temp = 1)
+
+    Dbeta_db <- - matrix(exp(-s), ncol = ncol(beta_trf), nrow = nrow(beta_trf))
+    Dbeta_ds <- - beta_trf
+    Dll_dbeta <- apply(beta_trf, MARGIN = 2, D_approx_log_like)
+    Dr_dll <- -2 * (true_ll - ll_beta_trf - mu)
+    Dr_dmu <- -2 * (true_ll - ll_beta_trf - mu)
+
+    Dpen_b <- 2 * penalty * b
+    Dpen_s <-  - 2 * penalty * (exp(-s) - 1) * exp(-s)
+
+    c(
+      sum(Dr_dmu),
+      (Dll_dbeta * Dbeta_db) %*% Dr_dll + Dpen_b,
+      (Dll_dbeta * Dbeta_ds) %*% Dr_dll + Dpen_s
+    )
+
+  }
+
+  topt <- function(vr, penalty){
+
+    mu <- vr[1]
+    b <- vr[2:(len+1)]
+    s <- vr[(len+2):(2*len + 1)]
+
+    approx_ll <- apply(xval, MARGIN = 1, function(x) loglike( exp(-s) * (x - b), type = "approx_likelihood", temp = 1))
+    # Least-squares
+    sum( ( true_ll - approx_ll - mu )^2 ) +
+      penalty * ( sum(b^2) + sum((exp(-s) - 1)^2) )
+
+  }
+
+  optim(par = par_start, fn = topt, gr = gropt, control = list(maxit = max_iter), method = "BFGS", penalty = 10)
+
+}
+
+visit_nls_optimise_pre_approx_llhood_transformation <- function(par_start, penalty, loglike, D_approx_log_like, temp, max_iter = 50, max_strata_size = 25, ...){
+
+  # should only send values of log_like that have been cached already
+  unique_x_val <- get("unique_x", envir = environment(loglike))
+  true_ll_val <- apply(unique_x_val, MARGIN = 1, loglike, type = "full_likelihood", temp = 1)
+
+  tlv_quant <- quantile(true_ll_val, probs = 0:10/10)
+  tlv_quant <- cbind(lower = tlv_quant[-11], upper = tlv_quant[-1])
+
+  strata_size <- min(max_strata_size, floor(length(true_ll_val)/10) )
+
+  true_ll_sample_ind <- c(apply(tlv_quant, MARGIN = 1, function(l_u){
+    sample(which(l_u[1] <= true_ll_val & true_ll_val <= l_u[2]),
+           size = strata_size, replace = F)
+  }))
+
+  xval <- unique_x_val[true_ll_sample_ind,]
+  true_ll <- true_ll_val[true_ll_sample_ind]
+
+  len <- ncol(xval)
+
+  if(missing(par_start) | is.null(par_start)){
+
+    par_start <- rep(0, times = len * 2 + 1)
+
+  }
+
+  approx_log_like <- function(b, s, ...){
+    # value
+    xv <- cbind(...)
+
+    xv_trf <- t(apply(xv, MARGIN = 1, function(x) exp(-s) * (x - b) ))
+    ll_val <-  apply(xv_trf, MARGIN = 1, loglike, type = "approx_likelihood", temp = 1)
+
+    Dbeta_db <- - matrix(exp(-s), ncol = ncol(xv_trf), nrow = nrow(xv_trf))
+    Dbeta_ds <- - xv_trf
+    Dll_dbeta <- t(apply(xv_trf, MARGIN = 1, D_approx_log_like))
+
+    grad <- cbind(
+      (Dll_dbeta * Dbeta_db),
+      (Dll_dbeta * Dbeta_ds)
+    )
+
+    attr(ll_val, "gradient") <- grad
+
+    return(ll_val)
+
+  }
+
+
+  dat <- rbind(
+    data.frame(y = true_ll, xval, ll = TRUE, w = 1),
+    data.frame(y = 0, matrix(0, nrow = len*2, ncol = ncol(xval)), ll = FALSE, w = sqrt(penalty))
+  )
+
+  nls_ridge <- nls(formula =
+                     y ~ ll * ( approx_log_like(b, s, X1, X2, X3, X4, X5) + mu ) + # least squares
+                     I(!ll) * ( identity(b) + identity(s) ), #ridge
+                   data = dat, start = list(b = par_start[2:6], s = par_start[7:11], mu = par_start[1]),
+                   weights = w,
+                   control = list(tol = 1e-02, maxiter = max_iter)
+  )
+
+  # mu first
+  list(par = c(coef(nls_ridge)[11], coef(nls_ridge)[1:10]))
+
+}
+
 best_step_scale_ejd_v_time <- function(step_scale, dist, comptime){
 
   tibble(step_scale = step_scale, dist = dist, comptime = comptime) %>%
@@ -225,7 +365,7 @@ nn_posterior <- function(y, X, sigma, tau){
 g_pars <- list(N = 100, N_approx = 100, true_beta = c(0, 0.5, -1.5, 1.5, -3),
                log_prior = log_prior, log_like = log_like, log_like_approx = log_like_approx,
                Dlog_like_approx_Dbeta = Dlog_like_approx_Dbeta,
-               draw_prior = draw_prior, optimise_pre_approx_llhood_transformation = visited_optimise_pre_approx_llhood_transformation,
+               draw_prior = draw_prior, optimise_pre_approx_llhood_transformation = visit_nls_optimise_pre_approx_llhood_transformation,
                best_step_scale = best_step_scale
 )
 
