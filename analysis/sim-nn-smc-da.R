@@ -374,7 +374,7 @@ sim_settings <- rep(list(list(f_pars = NULL, g_pars = g_pars)), 2)
 sim_settings[[1]]$f_pars <- list(
   num_p = 100,
   step_scale_set = c(0.25, 0.4, 0.55, 0.7),
-  b_s_start = rep(0, 10),
+  par_start = rep(0, 11),
   approx_ll_bias_mean = 1,
   approx_ll_bias_scale = 1.1,
   bss_model = "normal",
@@ -385,7 +385,7 @@ sim_settings[[1]]$f_pars <- list(
 sim_settings[[2]]$f_pars <- list(
   num_p = 200,
   step_scale_set =  c(0.25, 0.4, 0.55, 0.7),
-  b_s_start = rep(0, 10),
+  par_start = rep(0, 11),
   approx_ll_bias_mean = 1,
   approx_ll_bias_scale = 1.1,
   bss_model = "normal",
@@ -441,7 +441,7 @@ run_sim <- function(ss, verbose = F){
     use_da = T, use_approx = F,
     num_p = num_p,
     step_scale_set = step_scale_set,
-    b_s_start = b_s_start,
+    par_start = par_start,
     refresh_ejd_threshold = ss$f_pars$bss_D,
     log_prior = ss$g_pars$log_prior,
     log_like = log_like_f,
@@ -458,7 +458,6 @@ run_sim <- function(ss, verbose = F){
     use_da = F, use_approx = F,
     num_p = num_p,
     step_scale_set = step_scale_set,
-    b_s_start = b_s_start,
     refresh_ejd_threshold = ss$f_pars$bss_D,
     log_prior = ss$g_pars$log_prior,
     log_like = log_like,
@@ -476,7 +475,6 @@ run_sim <- function(ss, verbose = F){
     use_da = F, use_approx = T,
     num_p = num_p,
     step_scale_set = step_scale_set,
-    b_s_start = b_s_start,
     refresh_ejd_threshold = ss$f_pars$bss_D,
     log_prior = ss$g_pars$log_prior,
     log_like = log_like,
@@ -502,7 +500,7 @@ run_sim <- function(ss, verbose = F){
 
 ####
 
-res <- run_sim(ss = sim_settings[[1]], verbose = T)
+res <- run_sim(ss = sim_settings[[2]], verbose = T)
 
 #res <- future_map(1:100, .f = function(x) , .progress = T)
 

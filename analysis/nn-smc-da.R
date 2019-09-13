@@ -300,7 +300,7 @@ min_mh_cost <- function(min_T){
 
 }
 
-run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ejd_threshold, b_s_start,
+run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ejd_threshold, par_start,
                        log_prior, log_like, log_like_approx, Dlog_like_approx_Dbeta, draw_prior,
                        optimise_pre_approx_llhood_transformation,
                        find_best_step_scale,
@@ -320,7 +320,6 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
   ttime <- 0 # total time
   temps <- 0
   optima_matrix <- NULL
-  b_s_start <- NULL
 
   # need to generalise (or take out of function and have pre-defined?) generate_intial?
   curr_partl <- particles(beta = draw_prior(num_p))
@@ -386,12 +385,17 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
     if(use_da){
 
       # pre-tranformation for approx likelihood
-      if(tail(temps,1) > 0.05){
-        partial_optim <- optimise_pre_approx_llhood_transformation(particles = curr_partl, penalty = 5, loglike = log_ann_post_ctmc_da, D_approx_log_like = Dlog_like_approx_Dbeta, temp = tail(temps, 1), max_iter = 50, par_start = NULL)
+      if(i > 1){
+
+        optim_time <- Sys.time()
+        partial_optim <- optimise_pre_approx_llhood_transformation(particles = curr_partl, penalty = 5, loglike = log_ann_post_ctmc_da, D_approx_log_like = Dlog_like_approx_Dbeta, temp = tail(temps, 1), max_iter = 50, par_start = par_start * 0.5)
+        optim_time <- Sys.time() - optim_time
+
         pre_trans <- function(x){ (x - partial_optim$par[1:5]) / exp(partial_optim$par[6:10]) }
-        b_s_start <- partial_optim$par
+        par_start <- partial_optim$par
       } else {
         pre_trans <- identity
+        optim_time <- NULL
       }
 
       mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans)
@@ -466,7 +470,8 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
                            mh_steps = mh_step_count,
                            pre_accept_pr = pre_accept_prop,
                            accept_pr = accept_prop,
-                           ll_opt_par = b_s_start,
+                           ll_opt_par = par_start,
+                           optim_time = optim_time,
                            time = difftime(etime, stime, units = "secs")
                       )
 
