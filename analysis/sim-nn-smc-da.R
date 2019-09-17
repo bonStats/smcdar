@@ -39,7 +39,7 @@ log_like <- function(beta, X, y){
 
 log_like_approx <- function(beta, X, y, bias_mean, bias_scale = 1){
 
-  sum( dnorm(y, mean = X %*% ( bias_scale * beta + bias_mean) , sd = 1, log = T) )
+  1 + sum( dnorm(y, mean = X %*% ( bias_scale * beta + bias_mean) , sd = 1, log = T) )
 
 }
 
@@ -226,6 +226,9 @@ visit_nls_optimise_pre_approx_llhood_transformation <- function(par_start, penal
   xval <- unique_x_val[true_ll_sample_ind,]
   true_ll <- true_ll_val[true_ll_sample_ind]
 
+  # add noise to make optimisation more realistic
+  true_ll <- true_ll + rnorm(n = length(true_ll), sd = sd(true_ll)/100)
+
   len <- ncol(xval)
 
   if(missing(par_start) | is.null(par_start)){
@@ -379,7 +382,8 @@ sim_settings[[1]]$f_pars <- list(
   approx_ll_bias_scale = 1.1,
   bss_model = "normal",
   bss_D = 1,
-  bss_rho = 0.5
+  bss_rho = 0.5,
+  ll_tune_shrinage_penalty = 5
 )
 
 sim_settings[[2]]$f_pars <- list(
@@ -390,7 +394,8 @@ sim_settings[[2]]$f_pars <- list(
   approx_ll_bias_scale = 1.1,
   bss_model = "normal",
   bss_D = 1,
-  bss_rho = 0.5
+  bss_rho = 0.5,
+  ll_tune_shrinage_penalty = 5
 )
 
 simulate_regr <- function(N, beta){
@@ -435,6 +440,12 @@ run_sim <- function(ss, verbose = F){
                     model = ss$f_pars$bss_model, da = da)
   }
 
+
+  optimise_pre_approx_llhood_transformation_f <- function(par_start, loglike, D_approx_log_like, temp, ...){
+    ss$g_pars$optimise_pre_approx_llhood_transformation(par_start = par_start, penalty = ss$f_pars$ll_tune_shrinage_penalty,
+                                                        loglike = loglike, D_approx_log_like = D_approx_log_like, temp = temp,
+                                                        max_iter = 50, max_strata_size = 25)
+  }
   ## run
   cat("smc da")
   smc_da <- with(ss$f_pars, run_smc_da(
@@ -448,7 +459,7 @@ run_sim <- function(ss, verbose = F){
     log_like_approx = log_like_approx_f,
     Dlog_like_approx_Dbeta = Dlog_like_approx_Dbeta_f,
     draw_prior = ss$g_pars$draw_prior,
-    optimise_pre_approx_llhood_transformation =  ss$g_pars$optimise_pre_approx_llhood_transformation,
+    optimise_pre_approx_llhood_transformation =  optimise_pre_approx_llhood_transformation_f,
     find_best_step_scale = best_step_scale_f,
     verbose = verbose
   )
@@ -458,10 +469,11 @@ run_sim <- function(ss, verbose = F){
     use_da = F, use_approx = F,
     num_p = num_p,
     step_scale_set = step_scale_set,
+    par_start = NULL,
     refresh_ejd_threshold = ss$f_pars$bss_D,
     log_prior = ss$g_pars$log_prior,
-    log_like = log_like,
-    log_like_approx = log_like_approx,
+    log_like = log_like_f,
+    log_like_approx = log_like_approx_f,
     Dlog_like_approx_Dbeta = NULL,
     draw_prior = ss$g_pars$draw_prior,
     optimise_pre_approx_llhood_transformation =  NULL,
@@ -475,10 +487,11 @@ run_sim <- function(ss, verbose = F){
     use_da = F, use_approx = T,
     num_p = num_p,
     step_scale_set = step_scale_set,
+    par_start = NULL,
     refresh_ejd_threshold = ss$f_pars$bss_D,
     log_prior = ss$g_pars$log_prior,
-    log_like = log_like,
-    log_like_approx = log_like_approx,
+    log_like = log_like_f,
+    log_like_approx = log_like_approx_f,
     Dlog_like_approx_Dbeta = NULL,
     draw_prior = ss$g_pars$draw_prior,
     optimise_pre_approx_llhood_transformation =  NULL,

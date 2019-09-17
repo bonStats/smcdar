@@ -186,9 +186,11 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
 
 time_steps_to_min_quantile_dist_emp <- function(dist, D, rho, max_T = 10){
 
-  if( all(abs(dist) < 1e-04) ) return(list(prob = 0, iter = Inf, sufficient_iter = F))
-
   nz_index <- abs(dist) > 1e-04
+
+  # not enough non-zeros to estimate
+  if( sum(nz_index) < 3 )  return(list(prob = 0, iter = Inf, sufficient_iter = F))
+
   acceptance_rate <- mean( nz_index )
   ecdf_nz_dist <- ecdf(dist[nz_index])
 
@@ -209,9 +211,11 @@ time_steps_to_min_quantile_dist_emp <- function(dist, D, rho, max_T = 10){
 
 time_steps_to_min_quantile_dist_normal <- function(dist, D, rho, max_T = 10){
 
-  if( all(abs(dist) < 1e-04) ) return(list(prob = 0, iter = Inf, sufficient_iter = F))
-
   nz_index <- abs(dist) > 1e-04
+
+  # not enough non-zeros to estimate
+  if( sum(nz_index) < 4 )  return(list(prob = 0, iter = Inf, sufficient_iter = F))
+
   acceptance_rate <- mean( nz_index )
   n_mean <- mean(dist[nz_index])
   n_sd <- sqrt(var(dist[nz_index]))
@@ -233,9 +237,11 @@ time_steps_to_min_quantile_dist_normal <- function(dist, D, rho, max_T = 10){
 
 time_steps_to_min_quantile_dist_gamma <- function(dist, D, rho, max_T = 10){
 
-  if( all(abs(dist) < 1e-04) ) return(list(prob = 0, iter = Inf, sufficient_iter = F))
-
   nz_index <- abs(dist) > 1e-04
+
+  # not enough non-zeros to estimate
+  if( sum(nz_index) < 4 )  return(list(prob = 0, iter = Inf, sufficient_iter = F))
+
   acceptance_rate <- mean( nz_index )
   gam_fit <- MASS::fitdistr(dist[nz_index], "gamma", lower = c(0,0))
   g_rate <- gam_fit$estimate["rate"]
@@ -258,9 +264,11 @@ time_steps_to_min_quantile_dist_gamma <- function(dist, D, rho, max_T = 10){
 
 time_steps_to_min_quantile_dist_bootstrap <- function(dist, D, rho, max_T = 10, boot_samples = 100){
 
-  if( all(abs(dist) < 1e-04) ) return(list(prob = 0, iter = Inf, sufficient_iter = F))
-
   nz_index <- abs(dist) > 1e-04
+
+  # not enough non-zeros to estimate
+  if( sum(nz_index) < 3 )  return(list(prob = 0, iter = Inf, sufficient_iter = F))
+
   acceptance_rate <- mean( nz_index )
 
   boot_prob_gr_D <- vector(mode = "numeric", length = max_T)
@@ -388,11 +396,11 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
       if(i > 1){
 
         optim_time <- Sys.time()
-        partial_optim <- optimise_pre_approx_llhood_transformation(particles = curr_partl, penalty = 5, loglike = log_ann_post_ctmc_da, D_approx_log_like = Dlog_like_approx_Dbeta, temp = tail(temps, 1), max_iter = 50, par_start = par_start * 0.5)
+        approx_ll_tune_optim <- optimise_pre_approx_llhood_transformation(particles = curr_partl, loglike = log_ann_post_ctmc_da, D_approx_log_like = Dlog_like_approx_Dbeta, temp = tail(temps, 1), max_iter = 50, par_start = par_start * 0.5)
         optim_time <- Sys.time() - optim_time
 
-        pre_trans <- function(x){ (x - partial_optim$par[1:5]) / exp(partial_optim$par[6:10]) }
-        par_start <- partial_optim$par
+        pre_trans <- function(x){ (x - approx_ll_tune_optim$par[1:5]) / exp(approx_ll_tune_optim$par[6:10]) }
+        par_start <- approx_ll_tune_optim$par
       } else {
         pre_trans <- identity
         optim_time <- NULL
@@ -402,6 +410,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
 
     } else {
       mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
+      optim_time <- NULL
     }
 
     # update particles for 1 iteration
