@@ -500,12 +500,34 @@ run_sim <- function(ss, verbose = F){
   )
   )
 
+  # cat("smc approx + da")
+  # smc_approx_then_da <- with(ss$f_pars, run_smc_da(
+  #   use_da = T, use_approx = F,
+  #   num_p = num_p,
+  #   step_scale_set = step_scale_set,
+  #   par_start = NULL,
+  #   refresh_ejd_threshold = ss$f_pars$bss_D,
+  #   log_prior = ss$g_pars$log_prior,
+  #   log_like = log_like_f,
+  #   log_like_approx = log_like_approx_f,
+  #   Dlog_like_approx_Dbeta = NULL,
+  #   draw_prior = ss$g_pars$draw_prior,
+  #   optimise_pre_approx_llhood_transformation =  NULL,
+  #   find_best_step_scale = best_step_scale_f,
+  #   verbose = verbose
+  # )
+  # )
+
+  # update time
+
+
   return(
     list(sim_settings = ss,
          sim_data = sim,
          smc_da = smc_da,
          smc_full = smc_full,
-         smc_approx = smc_approx
+         smc_approx = smc_approx,
+         smc_approx_then_da = smc_approx_then_da
     )
   )
 
