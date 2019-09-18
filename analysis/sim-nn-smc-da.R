@@ -500,26 +500,24 @@ run_sim <- function(ss, verbose = F){
   )
   )
 
-  # cat("smc approx + da")
-  # smc_approx_then_da <- with(ss$f_pars, run_smc_da(
-  #   use_da = T, use_approx = F,
-  #   num_p = num_p,
-  #   step_scale_set = step_scale_set,
-  #   par_start = NULL,
-  #   refresh_ejd_threshold = ss$f_pars$bss_D,
-  #   log_prior = ss$g_pars$log_prior,
-  #   log_like = log_like_f,
-  #   log_like_approx = log_like_approx_f,
-  #   Dlog_like_approx_Dbeta = NULL,
-  #   draw_prior = ss$g_pars$draw_prior,
-  #   optimise_pre_approx_llhood_transformation =  NULL,
-  #   find_best_step_scale = best_step_scale_f,
-  #   verbose = verbose
-  # )
-  # )
-
-  # update time
-
+  cat("smc approx + da")
+  smc_approx_then_da <- with(ss$f_pars, run_smc_da(
+    use_da = T, use_approx = F, start_from_approx = T,
+    start_from_approx_fit = smc_approx,
+    num_p = num_p,
+    step_scale_set = step_scale_set,
+    par_start = par_start,
+    refresh_ejd_threshold = ss$f_pars$bss_D,
+    log_prior = ss$g_pars$log_prior,
+    log_like = log_like_f,
+    log_like_approx = log_like_approx_f,
+    Dlog_like_approx_Dbeta = Dlog_like_approx_Dbeta_f,
+    draw_prior = NULL,
+    optimise_pre_approx_llhood_transformation =  optimise_pre_approx_llhood_transformation_f,
+    find_best_step_scale = best_step_scale_f,
+    verbose = verbose
+  )
+  )
 
   return(
     list(sim_settings = ss,

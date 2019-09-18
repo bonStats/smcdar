@@ -76,6 +76,45 @@ log_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, log_p
 
 }
 
+log_approx_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, log_prior){
+
+  mem_log_likelihood <- memoise::memoise(log_likelihood)
+  mem_log_likelihood_approx <-  memoise::memoise(log_like_approx)
+  mem_log_prior <- memoise::memoise(log_prior)
+
+  unique_x <- NULL
+  unique_llh_val <- NULL
+  x_arg_name <- names(formals(mem_log_likelihood))
+
+  f <- function(x, temp = 1, lh_trans = identity, type = "full_posterior", ...){
+
+    # make matrix of x values memoised...
+    if(type %in% c("full_posterior", "full_approx_lhood_ratio", "full_likelihood")){ # if will evaulate true likelihood
+
+      hash_key <- get_hash_memoise(f = mem_log_likelihood, x = x, arg_name = x_arg_name)
+
+      if( !has_hash_value_memoise(f = mem_log_likelihood, hash = hash_key) ){
+        unique_x <<- rbind(unique_x, x) # matrix
+      }
+
+    }
+
+    switch(type,
+           approx_posterior = temp * mem_log_likelihood_approx(lh_trans(x), ...) + ( 1 - temp ) * mem_log_likelihood_approx(x, ...) + mem_log_prior(x, ...),
+           full_approx_lhood_ratio = temp * (  mem_log_likelihood(x, ...) - mem_log_likelihood_approx(lh_trans(x), ...) ),
+           approx_likelihood = temp * mem_log_likelihood_approx(lh_trans(x), ...),
+           full_likelihood =  temp * mem_log_likelihood(x, ...),
+           full_posterior = temp * mem_log_likelihood(x, ...) + ( 1 - temp ) * mem_log_likelihood_approx(x, ...) + mem_log_prior(x, ...),
+           prior =  mem_log_prior(x, ...)
+    )
+
+  }
+
+  return(f)
+
+}
+
+
 mh_step <- function(new_particles, old_particles, var, temp, loglike, type, time_on = T){
   # using MVN (symmetric kernel)
 
@@ -308,43 +347,66 @@ min_mh_cost <- function(min_T){
 
 }
 
-run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ejd_threshold, par_start,
+run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from_approx = F, refresh_ejd_threshold, par_start,
                        log_prior, log_like, log_like_approx, Dlog_like_approx_Dbeta, draw_prior,
+                       start_from_approx_fit,
                        optimise_pre_approx_llhood_transformation,
                        find_best_step_scale,
                        verbose = F
 ){
 
-  stopifnot(! (use_da & use_approx) )
+  stopifnot(
+    ! (use_da & use_approx),
+    !start_from_approx | use_da
+            )
 
-  log_ann_post_ctmc_da <-
-    log_likelihood_anneal_func_da(
-      log_likelihood = log_like,
-      log_like_approx = log_like_approx,
-      log_prior = log_prior
-    )
 
-  i <- 1
-  ttime <- 0 # total time
-  temps <- 0
-  optima_matrix <- NULL
+  if( !start_from_approx ){
 
-  # need to generalise (or take out of function and have pre-defined?) generate_intial?
-  curr_partl <- particles(beta = draw_prior(num_p))
+    log_post_llh_interface <-
+      log_likelihood_anneal_func_da(
+        log_likelihood = log_like,
+        log_like_approx = log_like_approx,
+        log_prior = log_prior
+      )
 
-  log_z <- 0
+    i <- 1
+    ttime <- 0 # total time
+    temps <- 0
+
+    curr_partl <- particles(beta = draw_prior(num_p))
+    log_z <- 0
+
+  } else{
+
+    log_post_llh_interface <-
+      log_approx_likelihood_anneal_func_da(
+        log_likelihood = log_like,
+        log_like_approx = log_like_approx,
+        log_prior = log_prior
+      )
+
+    i <- 1
+    ttime <- start_from_approx_fit$total_time # total time
+    temps <- 0
+
+    curr_partl <- start_from_approx_fit$particles
+    log_z <- start_from_approx_fit$log_z
+
+  }
+
   iter_summary <- list()
   particle_list <- list(curr_partl)
 
   while(tail(temps,1) < 1){
     stime <- Sys.time()
 
-    curr_log_post <- papply(curr_partl, fun = log_ann_post_ctmc_da, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
+    curr_log_post <- papply(curr_partl, fun = log_post_llh_interface, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
 
     ## new temp, update posterior
     # use ESS to find temp
     half_ess_temp_obj <- function(temp) {
-      log_post <- papply(curr_partl, fun = log_ann_post_ctmc_da, temp = temp, type = ifelse(use_approx, "approx_posterior", "full_posterior"))
+      log_post <- papply(curr_partl, fun = log_post_llh_interface, temp = temp, type = ifelse(use_approx, "approx_posterior", "full_posterior"))
       log_post <- replace(x = log_post, is.na(log_post), -Inf)
 
       partl_temp <- curr_partl
@@ -356,8 +418,6 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
       res
     }
 
-    #temp_optim <- optim(par = tail(temps)+0.0001, fn = half_ess_temp_obj, lower = tail(temps,1), upper = 1, method = "L-BFGS-B")
-
     if(half_ess_temp_obj(1) > 0){
 
       temp_optim <- list(root = 1)
@@ -368,11 +428,11 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
 
     }
 
-    temps <- c( temps, ifelse(temp_optim$root > 0.98, 1, temp_optim$root))
+    temps <- c( temps, min(1, temp_optim$root) )
 
     # new log posterior
     prev_log_post <- curr_log_post
-    curr_log_post <- papply(curr_partl, fun = log_ann_post_ctmc_da, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior") )
+    curr_log_post <- papply(curr_partl, fun = log_post_llh_interface, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior") )
     curr_log_post <- replace(x = curr_log_post, is.na(curr_log_post), -Inf)
 
     # weight update
@@ -396,7 +456,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
       if(i > 1){
 
         optim_time <- Sys.time()
-        approx_ll_tune_optim <- optimise_pre_approx_llhood_transformation(particles = curr_partl, loglike = log_ann_post_ctmc_da, D_approx_log_like = Dlog_like_approx_Dbeta, temp = tail(temps, 1), max_iter = 50, par_start = par_start * 0.5)
+        approx_ll_tune_optim <- optimise_pre_approx_llhood_transformation(particles = curr_partl, loglike = log_post_llh_interface, D_approx_log_like = Dlog_like_approx_Dbeta, temp = tail(temps, 1), max_iter = 50, par_start = par_start * 0.5)
         optim_time <- Sys.time() - optim_time
 
         pre_trans <- function(x){ (x - approx_ll_tune_optim$par[1:5]) / exp(approx_ll_tune_optim$par[6:10]) }
@@ -406,10 +466,10 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
         optim_time <- NULL
       }
 
-      mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans)
+      mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_post_llh_interface, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans)
 
     } else {
-      mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
+      mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_post_llh_interface, var = mvn_var$cov, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
       optim_time <- NULL
     }
 
@@ -417,7 +477,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
     curr_partl <- replace_particles(new_particles = proposed_partl, old_particles = resampled_partl, index = mh_res$accept)
 
     # optimise mh step
-   # best_step_scale <- find_best_step_scale(step_scale = sample_step_scale, dist = mh_res$dist, comptime = mh_res$comp_time)
+    # best_step_scale <- find_best_step_scale(step_scale = sample_step_scale, dist = mh_res$dist, comptime = mh_res$comp_time)
     best_ss <- find_best_step_scale(eta = sample_step_scale,
                                             dist = mh_res$dist,
                                             surrogate_acceptance = mh_res$pre_accept,
@@ -438,9 +498,9 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
       proposed_partl <- mvn_jitter(particles = curr_partl, step_scale = best_ss$step_scale, var = mvn_var$cov)
       #mh_res <- mh_func(new_particles = proposed_partl, old_particles = curr_partl, var = mvn_var$cov, temp = tail(temps,1) )
       if(use_da){
-        mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans, time_on = F)
+        mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_post_llh_interface, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans, time_on = F)
       } else {
-        mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_ann_post_ctmc_da, var = mvn_var$cov, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"), time_on = F)
+        mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_post_llh_interface, var = mvn_var$cov, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"), time_on = F)
       }
       curr_partl <- replace_particles(new_particles = proposed_partl, old_particles = curr_partl, index = mh_res$accept)
       accept_prop <- c(accept_prop, mean(mh_res$accept))
@@ -450,7 +510,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
       mh_step_count <- mh_step_count + 1
     }
 
-    target_log_post <-  papply(curr_partl, fun = log_ann_post_ctmc_da, temp = 1, type = ifelse(use_approx, "approx_posterior", "full_posterior") )
+    target_log_post <-  papply(curr_partl, fun = log_post_llh_interface, temp = 1, type = ifelse(use_approx, "approx_posterior", "full_posterior") )
 
     etime <- Sys.time()
 
@@ -493,11 +553,11 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
 
   }
 
-  # reweight:
-  prev_log_post <- curr_log_post
-  curr_log_post <- papply(curr_partl, fun = log_ann_post_ctmc_da, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior") )
-  curr_log_post <- replace(x = curr_log_post, is.na(curr_log_post), -Inf)
-  weights(curr_partl, log = T) <- weights(curr_partl, log = T) + curr_log_post - prev_log_post
+  # # reweight: #DONT NEED TO
+  # prev_log_post <- curr_log_post
+  # curr_log_post <- papply(curr_partl, fun = log_post_llh_interface, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior") )
+  # curr_log_post <- replace(x = curr_log_post, is.na(curr_log_post), -Inf)
+  # weights(curr_partl, log = T) <- weights(curr_partl, log = T) + curr_log_post - prev_log_post
 
   # make function to return approx posterior...
 
@@ -507,7 +567,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, refresh_ej
     eve_var_est = eve_var_est(curr_partl, log_z = log_z, num_iter = i),
     total_time = ttime,
     temps = temps,
-    log_ann_post_ctmc_da = log_ann_post_ctmc_da,
+    log_post_llh_interface = log_post_llh_interface,
     iter_summary = iter_summary,
     particle_list = particle_list
   ))
