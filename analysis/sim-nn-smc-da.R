@@ -33,15 +33,21 @@ draw_prior <- function(n){
 
 log_like <- function(beta, X, y){
   Sys.sleep(0.1)
-  sum( dnorm(y, mean = X %*% beta, sd = 1, log = T) )
+  sum( dnorm(y, mean = X %*% beta, sd = 0.5, log = T) )
 
 }
 
 log_like_approx <- function(beta, X, y, bias_mean, bias_scale = 1){
 
-  1 + sum( dnorm(y, mean = X %*% ( bias_scale * beta + bias_mean) , sd = 1, log = T) )
+  1 + sum( dnorm(y, mean = X %*% ( bias_scale * beta + bias_mean), sd = 1, log = T) )
 
 }
+# need to change Dlog_like_approx_Dbeta inorder to update this
+# log_like_approx <- function(beta, X, y, bias_mean, bias_scale = 1){
+#
+#   1 + sum( dt(y -  X %*% ( bias_scale * beta + bias_mean), df = 2, log = T) )
+#
+# }
 
 Dlog_like_approx_Dbeta <- function(beta, X, y, bias_mean, bias_scale = 1){
   # sd = 1
