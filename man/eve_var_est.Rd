@@ -14,8 +14,8 @@ eve_var_est(particles, log_z, num_iter)
 \item{num_iter}{Number of SMC iterations.}
 }
 \value{
-estimate of MC variance.
+estimate of MC variance of normalising constant.
 }
 \description{
-Variance estimator using ancestory
+See: Supplementary material for 'Variance estimation in the particle filter'
 }
