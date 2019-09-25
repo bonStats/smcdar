@@ -33,13 +33,13 @@ draw_prior <- function(n){
 
 log_like <- function(beta, X, y){
   Sys.sleep(0.1)
-  sum( dnorm(y, mean = X %*% beta, sd = 0.5, log = T) )
-
+  #sum( dnorm(y, mean = X %*% beta, sd = 0.5, log = T) )
+  sum( dt(y - X %*% beta, df = 3, log = T) )
 }
 
 log_like_approx <- function(beta, X, y, bias_mean, bias_scale = 1){
 
-  1 + sum( dnorm(y, mean = X %*% ( bias_scale * beta + bias_mean), sd = 1, log = T) )
+  -200 + sum( dnorm(y, mean = X %*% ( bias_scale * beta + bias_mean), sd = 1, log = T) )
 
 }
 # need to change Dlog_like_approx_Dbeta inorder to update this
@@ -385,7 +385,7 @@ sim_settings[[1]]$f_pars <- list(
   step_scale_set = c(0.25, 0.4, 0.55, 0.7),
   par_start = rep(0, 11),
   approx_ll_bias_mean = 1,
-  approx_ll_bias_scale = 1.1,
+  approx_ll_bias_scale = log(2),
   bss_model = "normal",
   bss_D = 1,
   bss_rho = 0.5,
@@ -397,17 +397,17 @@ sim_settings[[2]]$f_pars <- list(
   step_scale_set =  c(0.25, 0.4, 0.55, 0.7),
   par_start = rep(0, 11),
   approx_ll_bias_mean = 1,
-  approx_ll_bias_scale = 1.1,
+  approx_ll_bias_scale = log(2),
   bss_model = "normal",
   bss_D = 1,
   bss_rho = 0.5,
   ll_tune_shrinage_penalty = 5
 )
 
-simulate_regr <- function(N, beta){
+simulate_regr <- function(N, beta, error_dist = rnorm, ...){
 
   X <- matrix(rnorm(length(beta)*N), nrow = N)
-  y <- X %*% beta + rnorm(N)
+  y <- X %*% beta + error_dist(n = N, ...)
 
   return(
     list(y = y, X = X, beta = beta)
@@ -425,7 +425,7 @@ run_sim <- function(ss, verbose = F){
 
   ## simulate data
 
-  sim <- simulate_regr(N = ss$g_pars$N, beta = ss$g_pars$true_beta)
+  sim <- simulate_regr(N = ss$g_pars$N, beta = ss$g_pars$true_beta, error_dist = rt, df = 3)
 
   source("analysis/nn-smc-da.R")
 
@@ -450,7 +450,7 @@ run_sim <- function(ss, verbose = F){
   optimise_pre_approx_llhood_transformation_f <- function(par_start, loglike, D_approx_log_like, temp, ...){
     ss$g_pars$optimise_pre_approx_llhood_transformation(par_start = par_start, penalty = ss$f_pars$ll_tune_shrinage_penalty,
                                                         loglike = loglike, D_approx_log_like = D_approx_log_like, temp = temp,
-                                                        max_iter = 50, max_strata_size = 25)
+                                                        max_iter = 200, max_strata_size = 25)
   }
   ## run
   cat("smc da")
