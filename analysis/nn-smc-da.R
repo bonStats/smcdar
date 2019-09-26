@@ -347,11 +347,14 @@ min_mh_cost <- function(min_T){
 
 }
 
+#### RUN ####
+
 run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from_approx = F, refresh_ejd_threshold, par_start,
                        log_prior, log_like, log_like_approx, Dlog_like_approx_Dbeta, draw_prior,
                        start_from_approx_fit,
                        optimise_pre_approx_llhood_transformation,
                        find_best_step_scale,
+                       save_post_interface,
                        verbose = F
 ){
 
@@ -533,7 +536,6 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
                       list(
                            temp = tail(temps,1),
                            llh_target = target_log_post,
-                           approx_llh_pre_trans = if(use_da){ pre_trans } else {NULL},
                            step_scale = best_ss$step_scale,
                            expected_mh_steps = best_ss$expected_iter,
                            mh_steps = mh_step_count,
@@ -567,7 +569,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
     eve_var_est = eve_var_est(curr_partl, log_z = log_z, num_iter = i),
     total_time = ttime,
     temps = temps,
-    log_post_llh_interface = log_post_llh_interface,
+    log_post_llh_interface = if(save_post_interface){ log_post_llh_interface} else {NULL},
     iter_summary = iter_summary,
     particle_list = particle_list
   ))
