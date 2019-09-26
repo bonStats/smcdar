@@ -16,6 +16,22 @@ library(mvtnorm)
 
 #### Settings ####
 
+## Sim
+
+simulate_regr <- function(N, beta, error_dist = rnorm, ...){
+
+  X <- matrix(rnorm(length(beta)*N), nrow = N)
+  y <- X %*% beta + error_dist(n = N, ...)
+
+  return(
+    list(y = y, X = X, beta = beta)
+  )
+
+}
+
+simulate_regr_norm  <- function(N, beta) simulate_regr(N, beta, error_dist = rnorm, sd = 0.5)
+simulate_regr_tdist  <- function(N, beta) simulate_regr(N, beta, error_dist = rt, df = 3)
+
 ## Priors, likelihoods
 
 # prior: beta ~ Normal(0,1)
@@ -31,15 +47,19 @@ draw_prior <- function(n){
   )
 }
 
-log_like <- function(beta, X, y){
-  Sys.sleep(0.1)
-  #sum( dnorm(y, mean = X %*% beta, sd = 0.5, log = T) )
+log_like_norm <- function(beta, X, y, sleep_time = 0.1){
+  if(sleep_time > 0) Sys.sleep(sleep_time)
+  sum( dnorm(y, mean = X %*% beta, sd = 0.5, log = T) )
+}
+
+log_like_tdist <- function(beta, X, y, sleep_time = 0.1){
+  if(sleep_time > 0) Sys.sleep(sleep_time)
   sum( dt(y - X %*% beta, df = 3, log = T) )
 }
 
 log_like_approx <- function(beta, X, y, bias_mean, bias_scale = 1){
 
-  -200 + sum( dnorm(y, mean = X %*% ( bias_scale * beta + bias_mean), sd = 1, log = T) )
+  -50 + sum( dnorm(y, mean = X %*% ( bias_scale * beta + bias_mean), sd = 1, log = T) )
 
 }
 # need to change Dlog_like_approx_Dbeta inorder to update this
@@ -213,7 +233,7 @@ visit_gr_optimise_pre_approx_llhood_transformation <- function(par_start, loglik
 
 }
 
-visit_nls_optimise_pre_approx_llhood_transformation <- function(par_start, penalty, loglike, D_approx_log_like, temp, max_iter = 50, max_strata_size = 25, ...){
+visit_nls_optimise_pre_approx_llhood_transformation <- function(par_start, penalty, loglike, D_approx_log_like, temp, max_iter = 50, max_strata_size = 25, add_noise = T, ...){
 
   # should only send values of log_like that have been cached already
   unique_x_val <- get("unique_x", envir = environment(loglike))
@@ -233,7 +253,7 @@ visit_nls_optimise_pre_approx_llhood_transformation <- function(par_start, penal
   true_ll <- true_ll_val[true_ll_sample_ind]
 
   # add noise to make optimisation more realistic
-  true_ll <- true_ll + rnorm(n = length(true_ll), sd = sd(true_ll)/100)
+  if(add_noise) true_ll <- true_ll + rnorm(n = length(true_ll), sd = sd(true_ll)/50)
 
   len <- ncol(xval)
 
@@ -254,12 +274,13 @@ visit_nls_optimise_pre_approx_llhood_transformation <- function(par_start, penal
     Dbeta_ds <- - xv_trf
     Dll_dbeta <- t(apply(xv_trf, MARGIN = 1, D_approx_log_like))
 
-    grad <- cbind(
-      (Dll_dbeta * Dbeta_db),
-      (Dll_dbeta * Dbeta_ds)
-    )
-
-    attr(ll_val, "gradient") <- grad
+    # Somehow broke the gradient, but not neccesary for nls
+    # grad <- cbind(
+    #   (Dll_dbeta * Dbeta_db),
+    #   (Dll_dbeta * Dbeta_ds)
+    # )
+    #
+    # attr(ll_val, "gradient") <- grad
 
     return(ll_val)
 
@@ -274,13 +295,13 @@ visit_nls_optimise_pre_approx_llhood_transformation <- function(par_start, penal
   nls_ridge <- nls(formula =
                      y ~ ll * ( approx_log_like(b, s, X1, X2, X3, X4, X5) + mu ) + # least squares
                      I(!ll) * ( identity(b) + identity(s) ), #ridge
-                   data = dat, start = list(b = par_start[2:6], s = par_start[7:11], mu = par_start[1]),
+                   data = dat, start = list(b = par_start[1:5], s = par_start[6:10], mu = par_start[11]),
                    weights = w,
                    control = list(tol = 1e-02, maxiter = max_iter)
   )
 
   # mu first
-  list(par = c(coef(nls_ridge)[11], coef(nls_ridge)[1:10]))
+  list(par = coef(nls_ridge))
 
 }
 
@@ -372,10 +393,12 @@ nn_posterior <- function(y, X, sigma, tau){
 
 # true_theta = (birth rate prey, death rate prey/ birth rate pred, death rate pred)
 g_pars <- list(N = 100, N_approx = 100, true_beta = c(0, 0.5, -1.5, 1.5, -3),
-               log_prior = log_prior, log_like = log_like, log_like_approx = log_like_approx,
+               log_prior = log_prior, log_like = log_like_tdist, sim_func = simulate_regr_tdist,
+               log_like_approx = log_like_approx,
                Dlog_like_approx_Dbeta = Dlog_like_approx_Dbeta,
                draw_prior = draw_prior, optimise_pre_approx_llhood_transformation = visit_nls_optimise_pre_approx_llhood_transformation,
-               best_step_scale = best_step_scale
+               best_step_scale = best_step_scale,
+               save_post_interface = F
 )
 
 sim_settings <- rep(list(list(f_pars = NULL, g_pars = g_pars)), 2)
@@ -385,7 +408,7 @@ sim_settings[[1]]$f_pars <- list(
   step_scale_set = c(0.25, 0.4, 0.55, 0.7),
   par_start = rep(0, 11),
   approx_ll_bias_mean = 1,
-  approx_ll_bias_scale = log(2),
+  approx_ll_bias_scale = exp(0.1),
   bss_model = "normal",
   bss_D = 1,
   bss_rho = 0.5,
@@ -397,23 +420,12 @@ sim_settings[[2]]$f_pars <- list(
   step_scale_set =  c(0.25, 0.4, 0.55, 0.7),
   par_start = rep(0, 11),
   approx_ll_bias_mean = 1,
-  approx_ll_bias_scale = log(2),
+  approx_ll_bias_scale = exp(0.1),
   bss_model = "normal",
   bss_D = 1,
   bss_rho = 0.5,
   ll_tune_shrinage_penalty = 5
 )
-
-simulate_regr <- function(N, beta, error_dist = rnorm, ...){
-
-  X <- matrix(rnorm(length(beta)*N), nrow = N)
-  y <- X %*% beta + error_dist(n = N, ...)
-
-  return(
-    list(y = y, X = X, beta = beta)
-  )
-
-}
 
 ####
 
@@ -425,7 +437,7 @@ run_sim <- function(ss, verbose = F){
 
   ## simulate data
 
-  sim <- simulate_regr(N = ss$g_pars$N, beta = ss$g_pars$true_beta, error_dist = rt, df = 3)
+  sim <- ss$g_pars$sim_func(N = ss$g_pars$N, beta = ss$g_pars$true_beta)
 
   source("analysis/nn-smc-da.R")
 
@@ -450,7 +462,7 @@ run_sim <- function(ss, verbose = F){
   optimise_pre_approx_llhood_transformation_f <- function(par_start, loglike, D_approx_log_like, temp, ...){
     ss$g_pars$optimise_pre_approx_llhood_transformation(par_start = par_start, penalty = ss$f_pars$ll_tune_shrinage_penalty,
                                                         loglike = loglike, D_approx_log_like = D_approx_log_like, temp = temp,
-                                                        max_iter = 200, max_strata_size = 25)
+                                                        max_iter = 50, max_strata_size = 25, add_noise = F)
   }
   ## run
   cat("smc da")
@@ -467,6 +479,7 @@ run_sim <- function(ss, verbose = F){
     draw_prior = ss$g_pars$draw_prior,
     optimise_pre_approx_llhood_transformation =  optimise_pre_approx_llhood_transformation_f,
     find_best_step_scale = best_step_scale_f,
+    save_post_interface = ss$g_pars$save_post_interface,
     verbose = verbose
   )
   )
@@ -484,6 +497,7 @@ run_sim <- function(ss, verbose = F){
     draw_prior = ss$g_pars$draw_prior,
     optimise_pre_approx_llhood_transformation =  NULL,
     find_best_step_scale = best_step_scale_f,
+    save_post_interface = ss$g_pars$save_post_interface,
     verbose = verbose
   )
    )
@@ -502,6 +516,7 @@ run_sim <- function(ss, verbose = F){
     draw_prior = ss$g_pars$draw_prior,
     optimise_pre_approx_llhood_transformation =  NULL,
     find_best_step_scale = best_step_scale_f,
+    save_post_interface = ss$g_pars$save_post_interface,
     verbose = verbose
   )
   )
@@ -521,6 +536,7 @@ run_sim <- function(ss, verbose = F){
     draw_prior = NULL,
     optimise_pre_approx_llhood_transformation =  optimise_pre_approx_llhood_transformation_f,
     find_best_step_scale = best_step_scale_f,
+    save_post_interface = ss$g_pars$save_post_interface,
     verbose = verbose
   )
   )
@@ -539,7 +555,7 @@ run_sim <- function(ss, verbose = F){
 
 ####
 
-res <- run_sim(ss = sim_settings[[2]], verbose = T)
+res <- run_sim(ss = sim_settings[[1]], verbose = T)
 
 #res <- future_map(1:100, .f = function(x) , .progress = T)
 
