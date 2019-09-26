@@ -391,8 +391,8 @@ nn_posterior <- function(y, X, sigma, tau){
 
 }
 
-g_pars <- list(N = 100, N_approx = 100, true_beta = c(0, 0.5, -1.5, 1.5, -3),
-               log_prior = log_prior, log_like = log_like_tdist, sim_func = simulate_regr_tdist,
+g_pars1 <- list(N = 100, N_approx = 100, true_beta = c(0, 0.5, -1.5, 1.5, -3),
+               log_prior = log_prior, log_like = log_like_norm, sim_func = simulate_regr_norm,
                log_like_approx = log_like_approx,
                Dlog_like_approx_Dbeta = Dlog_like_approx_Dbeta,
                draw_prior = draw_prior, optimise_pre_approx_llhood_transformation = visit_nls_optimise_pre_approx_llhood_transformation,
@@ -400,9 +400,18 @@ g_pars <- list(N = 100, N_approx = 100, true_beta = c(0, 0.5, -1.5, 1.5, -3),
                save_post_interface = F
 )
 
-sim_settings <- rep(list(list(f_pars = NULL, g_pars = g_pars)), 2)
+g_pars2 <- within(g_pars1,
+                  {
+                    log_like = log_like_tdist
+                    sim_func = simulate_regr_tdist
+                    }
+                  )
 
-sim_settings[[1]]$f_pars <- list(
+sim_settings <- c(rep(list(list(f_pars = NULL, g_pars = g_pars1)), 2),
+                  rep(list(list(f_pars = NULL, g_pars = g_pars2)), 2)
+)
+
+sim_settings[[1]]$f_pars <- sim_settings[[3]]$f_pars <- list(
   num_p = 100,
   step_scale_set = c(0.25, 0.4, 0.55, 0.7),
   par_start = rep(0, 11),
@@ -414,7 +423,7 @@ sim_settings[[1]]$f_pars <- list(
   ll_tune_shrinage_penalty = 5
 )
 
-sim_settings[[2]]$f_pars <- list(
+sim_settings[[2]]$f_pars <- sim_settings[[4]]$f_pars <- list(
   num_p = 200,
   step_scale_set =  c(0.25, 0.4, 0.55, 0.7),
   par_start = rep(0, 11),
