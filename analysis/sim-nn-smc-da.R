@@ -1,18 +1,13 @@
 .libPaths(Sys.getenv("R_LIB_USER"))
 outdir <- Sys.getenv("OUT_DIRECTORY")
 
-devtools::install_github("bonStats/smcdar")
+devtools::install_github("bonStats/smcdar", lib = Sys.getenv("R_LIB_USER"))
 
 #### load packages ####
 
 library(smcdar)
 library(dplyr)
-#library(tidyr)
-#library(ggplot2)
-library(future)
-#library(future.apply)
-library(furrr)
-library(mvtnorm)
+library(parallel)
 
 #### Settings ####
 
@@ -392,27 +387,27 @@ nn_posterior <- function(y, X, sigma, tau){
 }
 
 g_pars1 <- list(N = 100, N_approx = 100, true_beta = c(0, 0.5, -1.5, 1.5, -3),
-               log_prior = log_prior, log_like = log_like_norm, sim_func = simulate_regr_norm,
-               log_like_approx = log_like_approx,
-               Dlog_like_approx_Dbeta = Dlog_like_approx_Dbeta,
-               draw_prior = draw_prior, optimise_pre_approx_llhood_transformation = visit_nls_optimise_pre_approx_llhood_transformation,
-               best_step_scale = best_step_scale,
-               save_post_interface = F
+                log_prior = log_prior, log_like = log_like_norm, sim_func = simulate_regr_norm,
+                log_like_approx = log_like_approx,
+                Dlog_like_approx_Dbeta = Dlog_like_approx_Dbeta,
+                draw_prior = draw_prior, optimise_pre_approx_llhood_transformation = visit_nls_optimise_pre_approx_llhood_transformation,
+                best_step_scale = best_step_scale,
+                save_post_interface = F
 )
 
 g_pars2 <- within(g_pars1,
                   {
                     log_like = log_like_tdist
                     sim_func = simulate_regr_tdist
-                    }
-                  )
+                  }
+)
 
 sim_settings <- c(rep(list(list(f_pars = NULL, g_pars = g_pars1)), 2),
                   rep(list(list(f_pars = NULL, g_pars = g_pars2)), 2)
 )
 
 sim_settings[[1]]$f_pars <- sim_settings[[3]]$f_pars <- list(
-  num_p = 100,
+  num_p = 250,
   step_scale_set = c(0.25, 0.4, 0.55, 0.7),
   par_start = rep(0, 11),
   approx_ll_bias_mean = 1,
@@ -424,8 +419,8 @@ sim_settings[[1]]$f_pars <- sim_settings[[3]]$f_pars <- list(
 )
 
 sim_settings[[2]]$f_pars <- sim_settings[[4]]$f_pars <- list(
-  num_p = 200,
-  step_scale_set =  c(0.25, 0.4, 0.55, 0.7),
+  num_p = 500,
+  step_scale_set =  c(0.1, 0.25, 0.4, 0.55, 0.7, 0.85),
   par_start = rep(0, 11),
   approx_ll_bias_mean = 1,
   approx_ll_bias_scale = exp(0.1),
@@ -447,18 +442,18 @@ run_sim <- function(ss, verbose = F){
 
   sim <- ss$g_pars$sim_func(N = ss$g_pars$N, beta = ss$g_pars$true_beta)
 
-  source("analysis/nn-smc-da.R")
+  source("nn-smc-da-server.R")
 
   log_like_f <- function(beta) ss$g_pars$log_like(beta, X = sim$X, y = sim$y)
   log_like_approx_f <- function(beta) ss$g_pars$log_like_approx(beta, X = sim$X[1:ss$g_pars$N_approx,],
-                                                              y = sim$y[1:ss$g_pars$N_approx],
-                                                              bias_mean = ss$f_pars$approx_ll_bias_mean,
-                                                              bias_scale = ss$f_pars$approx_ll_bias_scale)
+                                                                y = sim$y[1:ss$g_pars$N_approx],
+                                                                bias_mean = ss$f_pars$approx_ll_bias_mean,
+                                                                bias_scale = ss$f_pars$approx_ll_bias_scale)
 
   Dlog_like_approx_Dbeta_f <- function(beta) ss$g_pars$Dlog_like_approx_Dbeta(beta, X = sim$X[1:ss$g_pars$N_approx,],
-                                                                            y = sim$y[1:ss$g_pars$N_approx],
-                                                                            bias_mean = ss$f_pars$approx_ll_bias_mean,
-                                                                            bias_scale = ss$f_pars$approx_ll_bias_scale)
+                                                                              y = sim$y[1:ss$g_pars$N_approx],
+                                                                              bias_mean = ss$f_pars$approx_ll_bias_mean,
+                                                                              bias_scale = ss$f_pars$approx_ll_bias_scale)
 
   best_step_scale_f <- function(eta, dist, surrogate_acceptance, surrogate_cost, full_cost, da = T){
     best_step_scale(eta = eta, dist = dist, D = ss$f_pars$bss_D, rho = ss$f_pars$bss_rho, max_T = 10,
@@ -473,7 +468,7 @@ run_sim <- function(ss, verbose = F){
                                                         max_iter = 50, max_strata_size = 25, add_noise = F)
   }
   ## run
-  cat("smc da")
+  if(verbose) cat("smc da\n")
   smc_da <- with(ss$f_pars, run_smc_da(
     use_da = T, use_approx = F,
     num_p = num_p,
@@ -491,7 +486,7 @@ run_sim <- function(ss, verbose = F){
     verbose = verbose
   )
   )
-  cat("smc full")
+  if(verbose) cat("smc full\n")
   smc_full <- with(ss$f_pars, run_smc_da(
     use_da = F, use_approx = F,
     num_p = num_p,
@@ -508,9 +503,9 @@ run_sim <- function(ss, verbose = F){
     save_post_interface = ss$g_pars$save_post_interface,
     verbose = verbose
   )
-   )
+  )
 
-  cat("smc approx")
+  if(verbose) cat("smc approx\n")
   smc_approx <- with(ss$f_pars, run_smc_da(
     use_da = F, use_approx = T,
     num_p = num_p,
@@ -529,7 +524,7 @@ run_sim <- function(ss, verbose = F){
   )
   )
 
-  cat("smc approx + da")
+  if(verbose) cat("smc approx + da\n")
   smc_approx_then_da <- with(ss$f_pars, run_smc_da(
     use_da = T, use_approx = F, start_from_approx = T,
     start_from_approx_fit = smc_approx,
@@ -549,6 +544,8 @@ run_sim <- function(ss, verbose = F){
   )
   )
 
+  cat("done")
+
   return(
     list(sim_settings = ss,
          sim_data = sim,
@@ -563,37 +560,20 @@ run_sim <- function(ss, verbose = F){
 
 ####
 
-res <- run_sim(ss = sim_settings[[1]], verbose = T)
+cat("parallel::detectCores():", parallel::detectCores(),"\n")
 
-#res <- future_map(1:100, .f = function(x) , .progress = T)
+for(ssi in 2:length(sim_settings)){
 
-da_opt_approx_ll_hood <- function(b, res, i){
-
-  # pre-trans is identity if not turned on.
-  res$smc_da$log_ann_post_ctmc_da(
-    x = b, temp = 1,
-    lh_trans = res$smc_da$iter_summary[[i]]$approx_llh_pre_trans,
-    type = "approx_likelihood"
-    )
-
-}
-
-ll_hood <- function(b, res, i){
-
-  # pre-trans is identity if not turned on.
-  res$smc_da$log_ann_post_ctmc_da(
-    x = b, temp = 1,
-    type = "full_likelihood"
+  cat("*SIM",ssi,"*\n")
+  res <- mclapply(1:100, function(...)
+  {
+    tryCatch(run_sim(ss = sim_settings[[ssi]]),
+             error=function(e) {
+               cat(paste(e))
+               paste(e)
+             })
+  }, mc.cores = 15
   )
-
+  saveRDS(res, file.path(outdir, paste0("sim_res_",ssi,"_20190926.rds")))
+  rm(res)
 }
-
-mean_beta <- colMeans(res$smc_da$particles)
-
-approx_ll <- function(x) sapply(x, function(x) da_opt_approx_ll_hood(b = replace(mean_beta, list = 1, x), res = res, i = 1))
-full_ll <- function(x) sapply(x, function(x) ll_hood(b = replace(mean_beta, list = 1, x), res = res, i = 1))
-
-x <- seq(-10,10, length.out = 200)
-
-plot(x, exp(approx_ll(x)), type = "l")
-lines(x, exp(full_ll(x)), col = "red")
