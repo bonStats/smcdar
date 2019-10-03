@@ -22,7 +22,7 @@ papply <- function(particles, fun, comp_time = F, ...){
       tic <- Sys.time()
       res <- fun(x, ...)
       toc <- Sys.time()
-      tim <- toc - tic
+      tim <- toc - tic + ifelse(is.null(attr(res, "comptime")), 0, attr(res, "comptime"))
       list(res = res, time = tim)
     }
 

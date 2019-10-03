@@ -1,3 +1,5 @@
+# fix total timer! Test timing still working
+
 .libPaths(Sys.getenv("R_LIB_USER"))
 outdir <- Sys.getenv("OUT_DIRECTORY")
 
@@ -42,9 +44,17 @@ draw_prior <- function(n){
   )
 }
 
-log_like_norm <- function(beta, X, y, sleep_time = 0.1){
-  if(sleep_time > 0) Sys.sleep(sleep_time)
-  sum( dnorm(y, mean = X %*% beta, sd = 0.5, log = T) )
+log_like_norm <- function(beta, X, y, sleep_time = 0.1, real_sleep = F){
+
+  ll <- sum( dnorm(y, mean = X %*% beta, sd = 0.5, log = T) )
+
+  if(sleep_time > 0){
+    if(real_sleep) Sys.sleep(sleep_time)
+    else attr(ll, "comptime") <- sleep_time
+  }
+
+  return(ll)
+
 }
 
 log_like_tdist <- function(beta, X, y, sleep_time = 0.1){
