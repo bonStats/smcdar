@@ -132,9 +132,12 @@ mh_step <- function(new_particles, old_particles, var, temp, loglike, type, time
   if(time_on){
     avg_full_like_cost <- mean(attr(new_loglike_type, "comptime"))
     comp_time <- attr(new_loglike_type, "comptime")
+    extra_artifical_time <- sum(attr(new_loglike_type, "artiftime"))
+
   } else {
     avg_full_like_cost <- NA
     comp_time <- NA
+    extra_artifical_time <- 0
   }
 
   return(list(
@@ -143,7 +146,8 @@ mh_step <- function(new_particles, old_particles, var, temp, loglike, type, time
     dist = dist,
     comp_time = comp_time,
     avg_full_like_cost = avg_full_like_cost,
-    avg_surr_like_cost = NA
+    avg_surr_like_cost = NA,
+    extra_artifical_time = extra_artifical_time
   ))
 
 }
@@ -203,10 +207,18 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
     mean(attr(approx_trans_post_old_particles, "comptime")) +
     mean(attr(approx_trans_llh_new_particles, "comptime"))
 
+  extra_artifical_time <-
+    sum(attr(full_post_new_particles, "artiftime")) +
+    sum(attr(approx_trans_post_new_particles, "artiftime")) +
+    sum(attr(approx_trans_post_old_particles, "artiftime")) +
+    sum(attr(approx_trans_llh_new_particles, "artiftime"))
+
+
   } else {
     comp_time <- NA
     avg_full_like_cost <- NA
     avg_surr_like_cost <- NA
+    extra_artifical_time <- 0
   }
 
   dist <- sqrt( maha_dist ) * accept
@@ -217,7 +229,8 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
     dist = dist,
     comp_time = comp_time,
     avg_full_like_cost = avg_full_like_cost,
-    avg_surr_like_cost = avg_surr_like_cost
+    avg_surr_like_cost = avg_surr_like_cost,
+    extra_artifical_time = extra_artifical_time
   ))
 
 }
@@ -374,7 +387,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
       )
 
     i <- 1
-    ttime <- 0 # total time
+    ttime <- as.difftime(0, units = "secs") # total time
     temps <- 0
 
     curr_partl <- particles(beta = draw_prior(num_p))
@@ -453,6 +466,8 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
     sample_step_scale <- step_scale_set[sample.int(num_particles(resampled_partl)) %% length(step_scale_set) + 1]
     proposed_partl <- mvn_jitter(particles = resampled_partl, step_scale = sample_step_scale, var = mvn_var$cov) # jittered particles
 
+    total_artifical_time <- as.difftime(0, units = "secs")
+
     if(use_da){
 
       # pre-tranformation for approx likelihood
@@ -475,6 +490,9 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
       mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_post_llh_interface, var = mvn_var$cov, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
       optim_time <- NULL
     }
+
+    # if likelihood has artifical timing, need to record total time for stime and etime.
+    total_artifical_time <- total_artifical_time + mh_res$extra_artifical_time
 
     # update particles for 1 iteration
     curr_partl <- replace_particles(new_particles = proposed_partl, old_particles = resampled_partl, index = mh_res$accept)
@@ -511,13 +529,15 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
 
       total_dist <- total_dist + mh_res$dist
       mh_step_count <- mh_step_count + 1
+      total_artifical_time <- total_artifical_time + mh_res$extra_artifical_time
+
     }
 
     target_log_post <-  papply(curr_partl, fun = log_post_llh_interface, temp = 1, type = ifelse(use_approx, "approx_posterior", "full_posterior") )
 
     etime <- Sys.time()
 
-    ttime <- ttime + etime - stime
+    ttime <- ttime + difftime(etime, stime, units = "secs") + total_artifical_time
 
     if(verbose){
       cat("*iter:", i,
@@ -528,7 +548,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
           "*mh-steps:", mh_step_count,"\n\t",
           "*pre-accept-pr:", round(mean(pre_accept_prop[-1]),3),
           "*accept-pr:", round(mean(accept_prop[-1]),3),
-          "*time:", round(difftime(etime, stime, units = "secs"),1),
+          "*time:", round(difftime(etime, stime, units = "secs") + total_artifical_time, 1),
           "\n")
     }
 
@@ -543,7 +563,8 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
                            accept_pr = accept_prop,
                            ll_opt_par = par_start,
                            optim_time = optim_time,
-                           time = difftime(etime, stime, units = "secs")
+                           true_time = difftime(etime, stime, units = "secs"),
+                           time = difftime(etime, stime, units = "secs") + total_artifical_time
                       )
 
 

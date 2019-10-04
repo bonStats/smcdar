@@ -22,16 +22,19 @@ papply <- function(particles, fun, comp_time = F, ...){
       tic <- Sys.time()
       res <- fun(x, ...)
       toc <- Sys.time()
-      tim <- toc - tic + ifelse(is.null(attr(res, "comptime")), 0, attr(res, "comptime"))
-      list(res = res, time = tim)
+      art <- ifelse(is.null(attr(res, "comptime")), 0, attr(res, "comptime"))
+      tim <- toc - tic + art
+      list(res = res, time = tim, artifical_time = art)
     }
 
     res_list <- apply(particles, MARGIN = 1, FUN = fun_time, ...)
 
     res <- simplify2array(lapply(res_list, getElement, name = "res"))
     timing <- sapply(res_list, getElement, name = "time")
+    artiftiming <- sapply(res_list, getElement, name = "artifical_time")
 
     attr(res, "comptime") <- timing
+    attr(res, "artiftime") <- artiftiming
 
     return(res)
   }
