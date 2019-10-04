@@ -452,8 +452,6 @@ run_sim <- function(ss, verbose = F){
 
   sim <- ss$g_pars$sim_func(N = ss$g_pars$N, beta = ss$g_pars$true_beta)
 
-  source("nn-smc-da-server.R")
-
   log_like_f <- function(beta) ss$g_pars$log_like(beta, X = sim$X, y = sim$y)
   log_like_approx_f <- function(beta) ss$g_pars$log_like_approx(beta, X = sim$X[1:ss$g_pars$N_approx,],
                                                                 y = sim$y[1:ss$g_pars$N_approx],

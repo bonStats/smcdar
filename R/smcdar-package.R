@@ -24,4 +24,5 @@
 #' @useDynLib smcdar, .registration = TRUE
 #' @importFrom Rcpp sourceCpp
 ## usethis namespace: end
+#' @importFrom utils tail
 NULL

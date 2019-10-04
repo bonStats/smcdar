@@ -8,9 +8,6 @@ vec_summary <- function(x){
 
 }
 
-logit <- function(x) exp(x) / (1 + exp(x))
-ilogit <- function(x) log(x) - log(1 - x)
-
 get_hash_memoise <- function(f, x, arg_name){
 
   called_args <- setNames(list(x), arg_name)

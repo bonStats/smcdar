@@ -53,7 +53,7 @@ papply <- function(particles, fun, comp_time = F, ...){
 #'
 #'     res <- vector(mode = "list", length = num_particles(particles))
 #'     ugroups <- unique(groups)
-#'     timing <- setNames(rep(NA_real_, length(ugroups)), ugroups)
+#'     timing <- stats::setNames(rep(NA_real_, length(ugroups)), ugroups)
 #'     len <- rep(NA_integer_, length(ugroups))
 #'
 #'     for(tgp in ugroups){
