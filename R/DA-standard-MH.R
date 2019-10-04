@@ -24,7 +24,7 @@ mh_step <- function(new_particles, old_particles, var, temp, loglike, type, time
 
   maha_dist <- papply(new_particles - old_particles, function(x){t(x) %*% solve(var, x)})
 
-  dist <- sqrt( maha_dist ) * accept
+  proposal_dist <- sqrt( maha_dist )
 
   if(time_on){
     avg_full_like_cost <- mean(attr(new_loglike_type, "comptime"))
@@ -38,9 +38,11 @@ mh_step <- function(new_particles, old_particles, var, temp, loglike, type, time
   }
 
   return(list(
+    expected_pre_accept = NA,
     pre_accept = NA,
     accept = accept,
-    dist = dist,
+    proposal_dist = proposal_dist,
+    actual_dist = proposal_dist * accept,
     comp_time = comp_time,
     avg_full_like_cost = avg_full_like_cost,
     avg_surr_like_cost = NA,
@@ -48,3 +50,4 @@ mh_step <- function(new_particles, old_particles, var, temp, loglike, type, time
   ))
 
 }
+

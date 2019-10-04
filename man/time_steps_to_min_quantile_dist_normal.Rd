@@ -4,10 +4,12 @@
 \alias{time_steps_to_min_quantile_dist_normal}
 \title{Calculate number of MH steps required until threshold is met.}
 \usage{
-time_steps_to_min_quantile_dist_normal(dist, D, rho, max_T = 10)
+time_steps_to_min_quantile_dist_normal(dist, accept, D, rho, max_T = 10)
 }
 \arguments{
-\item{dist}{(Expected) distances travelled by each particle.}
+\item{dist}{Proposed distances travelled by each particle.}
+
+\item{accept}{Whether a proposal was accepted or rejected.}
 
 \item{D}{Threshold distance required to travel in total.}
 

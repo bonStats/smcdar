@@ -1,4 +1,4 @@
-# fix total timer! Test timing still working
+# Add counts to likelihood evaluations, check artifical timer owrking for DA but especially Full
 
 .libPaths(Sys.getenv("R_LIB_USER"))
 outdir <- Sys.getenv("OUT_DIRECTORY")
@@ -322,7 +322,7 @@ best_step_scale_ejd_v_time <- function(step_scale, dist, comptime){
 
 }
 
-best_step_scale <- function(eta, dist, D, rho, max_T = 10, surrogate_acceptance, surrogate_cost, full_cost, model = "empirical", da = T){
+best_step_scale <- function(eta, dist, accept, D, rho, max_T = 10, surrogate_expected_acceptance, surrogate_cost, full_cost, model = "empirical", da = T){
 
   find_min_iter <- switch(model, # nned to make more robust to situations where only 1 is accepted.
                           empirical = time_steps_to_min_quantile_dist_emp,
@@ -334,18 +334,10 @@ best_step_scale <- function(eta, dist, D, rho, max_T = 10, surrogate_acceptance,
   unq_eta <- sort(unique(eta), decreasing = T)
   min_T_res <- vector(mode = "list", length = length(unq_eta))
 
-  saccept_tb <- tibble(accept = surrogate_acceptance, eta = eta) %>%
-    group_by(eta) %>%
-    summarise(surrogate_accept_rate = mean(accept)) %>%
-    arrange(-eta)
-  # to be same order as unq_eta
-
-  surrogate_acceptance_rate <- saccept_tb$surrogate_accept_rate
-
   for(i in 1:length(unq_eta)){
 
     ue <- unq_eta[i]
-    min_T_res[[i]] <- find_min_iter(dist = dist[eta == ue], D = D, rho = rho, max_T = max_T)
+    min_T_res[[i]] <- find_min_iter(dist = dist[eta == ue], accept = accept[eta == ue],  D = D, rho = rho, max_T = max_T)
 
   }
 
@@ -362,6 +354,14 @@ best_step_scale <- function(eta, dist, D, rho, max_T = 10, surrogate_acceptance,
   min_T[!which_eta_consider] <- Inf
 
   if(da){
+    saccept_tb <- tibble(accept = surrogate_expected_acceptance, eta = eta) %>%
+      group_by(eta) %>%
+      summarise(surrogate_accept_rate = mean(accept)) %>%
+      arrange(-eta)
+    # to be same order as unq_eta
+
+    surrogate_acceptance_rate <- saccept_tb$surrogate_accept_rate
+
     which_mintotal_cost <- min_da_mh_cost(min_T, surrogate_acceptance_rate, surrogate_cost, full_cost)
   } else {
     which_mintotal_cost <- min_mh_cost(min_T)
@@ -452,7 +452,7 @@ run_sim <- function(ss, verbose = F){
 
   sim <- ss$g_pars$sim_func(N = ss$g_pars$N, beta = ss$g_pars$true_beta)
 
-  log_like_f <- function(beta) ss$g_pars$log_like(beta, X = sim$X, y = sim$y)
+  log_like_f <- function(beta) ss$g_pars$log_like(beta, X = sim$X, y = sim$y, sleep_time = 100)
   log_like_approx_f <- function(beta) ss$g_pars$log_like_approx(beta, X = sim$X[1:ss$g_pars$N_approx,],
                                                                 y = sim$y[1:ss$g_pars$N_approx],
                                                                 bias_mean = ss$f_pars$approx_ll_bias_mean,
@@ -463,9 +463,9 @@ run_sim <- function(ss, verbose = F){
                                                                               bias_mean = ss$f_pars$approx_ll_bias_mean,
                                                                               bias_scale = ss$f_pars$approx_ll_bias_scale)
 
-  best_step_scale_f <- function(eta, dist, surrogate_acceptance, surrogate_cost, full_cost, da = T){
-    best_step_scale(eta = eta, dist = dist, D = ss$f_pars$bss_D, rho = ss$f_pars$bss_rho, max_T = 10,
-                    surrogate_acceptance = surrogate_acceptance, surrogate_cost = surrogate_cost, full_cost = full_cost,
+  best_step_scale_f <- function(eta, dist, accept, surrogate_expected_acceptance, surrogate_cost, full_cost, da = T){
+    best_step_scale(eta = eta, dist = dist, accept = accept, D = ss$f_pars$bss_D, rho = ss$f_pars$bss_rho, max_T = 10,
+                    surrogate_expected_acceptance = surrogate_expected_acceptance, surrogate_cost = surrogate_cost, full_cost = full_cost,
                     model = ss$f_pars$bss_model, da = da)
   }
 

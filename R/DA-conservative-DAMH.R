@@ -80,12 +80,14 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
     extra_artifical_time <- 0
   }
 
-  dist <- sqrt( maha_dist ) * accept
+  proposal_dist <- sqrt( maha_dist )
 
   return(list(
+    expected_pre_accept = pmin(1, exp(log_rho_1)),
     pre_accept = accept_1,
     accept = accept,
-    dist = dist,
+    proposal_dist = proposal_dist,
+    actual_dist = proposal_dist * accept,
     comp_time = comp_time,
     avg_full_like_cost = avg_full_like_cost,
     avg_surr_like_cost = avg_surr_like_cost,

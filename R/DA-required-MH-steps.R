@@ -2,22 +2,23 @@
 #'
 #' Emperical version.
 #'
-#' @param dist (Expected) distances travelled by each particle.
+#' @param dist Proposed distances travelled by each particle.
+#' @param accept Whether a proposal was accepted or rejected.
 #' @param D Threshold distance required to travel in total.
 #' @param rho Probability level of exceeding trheshold distance.
 #' @param max_T Maximum number of iterations to compute before "failing".
 #'
 #' @return List with results for each parameter.
 #' @export
-time_steps_to_min_quantile_dist_emp <- function(dist, D, rho, max_T = 10){
+time_steps_to_min_quantile_dist_emp <- function(dist, accept, D, rho, max_T = 10){
 
-  nz_index <- abs(dist) > 1e-04
+  nz_index <- accept
 
   # not enough non-zeros to estimate
   if( sum(nz_index) < 3 )  return(list(prob = 0, iter = Inf, sufficient_iter = F))
 
   acceptance_rate <- mean( nz_index )
-  ecdf_nz_dist <- stats::ecdf(dist[nz_index])
+  ecdf_nz_dist <- stats::ecdf(dist)
 
   for(tT in 1:max_T){
 
@@ -38,23 +39,24 @@ time_steps_to_min_quantile_dist_emp <- function(dist, D, rho, max_T = 10){
 #'
 #' Normal version.
 #'
-#' @param dist (Expected) distances travelled by each particle.
+#' @param dist Proposed distances travelled by each particle.
+#' @param accept Whether a proposal was accepted or rejected.
 #' @param D Threshold distance required to travel in total.
 #' @param rho Probability level of exceeding trheshold distance.
 #' @param max_T Maximum number of iterations to compute before "failing".
 #'
 #' @return List with results for each parameter.
 #' @export
-time_steps_to_min_quantile_dist_normal <- function(dist, D, rho, max_T = 10){
+time_steps_to_min_quantile_dist_normal <- function(dist, accept, D, rho, max_T = 10){
 
-  nz_index <- abs(dist) > 1e-04
+  nz_index <- accept
 
   # not enough non-zeros to estimate
   if( sum(nz_index) < 4 )  return(list(prob = 0, iter = Inf, sufficient_iter = F))
 
   acceptance_rate <- mean( nz_index )
-  n_mean <- mean(dist[nz_index])
-  n_sd <- sqrt(stats::var(dist[nz_index]))
+  n_mean <- mean(dist)
+  n_sd <- sqrt(stats::var(dist))
 
   for(tT in 1:max_T){
 
@@ -75,22 +77,23 @@ time_steps_to_min_quantile_dist_normal <- function(dist, D, rho, max_T = 10){
 #'
 #' Gamma version.
 #'
-#' @param dist (Expected) distances travelled by each particle.
+#' @param dist Proposed distances travelled by each particle.
+#' @param accept Whether a proposal was accepted or rejected.
 #' @param D Threshold distance required to travel in total.
 #' @param rho Probability level of exceeding trheshold distance.
 #' @param max_T Maximum number of iterations to compute before "failing".
 #'
 #' @return List with results for each parameter.
 #' @export
-time_steps_to_min_quantile_dist_gamma <- function(dist, D, rho, max_T = 10){
+time_steps_to_min_quantile_dist_gamma <- function(dist, accept, D, rho, max_T = 10){
 
-  nz_index <- abs(dist) > 1e-04
+  nz_index <- accept
 
   # not enough non-zeros to estimate
   if( sum(nz_index) < 4 )  return(list(prob = 0, iter = Inf, sufficient_iter = F))
 
   acceptance_rate <- mean( nz_index )
-  gam_fit <- MASS::fitdistr(dist[nz_index], "gamma", lower = c(0,0))
+  gam_fit <- MASS::fitdistr(dist, "gamma", lower = c(0,0))
   g_rate <- gam_fit$estimate["rate"]
   g_shape <- gam_fit$estimate["shape"]
 
@@ -113,7 +116,8 @@ time_steps_to_min_quantile_dist_gamma <- function(dist, D, rho, max_T = 10){
 #'
 #' Bootstrap version.
 #'
-#' @param dist (Expected) distances travelled by each particle.
+#' @param dist Proposed distances travelled by each particle.
+#' @param accept Whether a proposal was accepted or rejected.
 #' @param D Threshold distance required to travel in total.
 #' @param rho Probability level of exceeding threshold distance.
 #' @param max_T Maximum number of iterations to compute before "failing".
@@ -121,9 +125,9 @@ time_steps_to_min_quantile_dist_gamma <- function(dist, D, rho, max_T = 10){
 #'
 #' @return List with results for each parameter.
 #' @export
-time_steps_to_min_quantile_dist_bootstrap <- function(dist, D, rho, max_T = 10, boot_samples = 100){
+time_steps_to_min_quantile_dist_bootstrap <- function(dist, accept, D, rho, max_T = 10, boot_samples = 100){
 
-  nz_index <- abs(dist) > 1e-04
+  nz_index <- accept
 
   # not enough non-zeros to estimate
   if( sum(nz_index) < 3 )  return(list(prob = 0, iter = Inf, sufficient_iter = F))
@@ -134,7 +138,7 @@ time_steps_to_min_quantile_dist_bootstrap <- function(dist, D, rho, max_T = 10, 
 
   for(tT in 1:max_T){
 
-    boot_prob_gr_D[tT] <- mean(rowSums(matrix(sample(dist[nz_index], size = boot_samples * tT, replace = T), ncol = tT)) > D)
+    boot_prob_gr_D[tT] <- mean(rowSums(matrix(sample(dist, size = boot_samples * tT, replace = T), ncol = tT)) > D)
     pr_D <- sum( ( 1 - boot_prob_gr_D[1:tT] ) * stats::dbinom(1:tT, size = tT, prob = acceptance_rate) )
     if(pr_D > rho) break;
 
