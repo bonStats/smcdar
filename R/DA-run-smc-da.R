@@ -52,7 +52,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
     curr_partl <- particles(beta = draw_prior(num_p))
     log_z <- 0
 
-  } else{
+  } else {
 
     log_post_llh_interface <-
       log_approx_likelihood_anneal_func_da(
@@ -67,6 +67,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
 
     curr_partl <- start_from_approx_fit$particles
     log_z <- start_from_approx_fit$log_z
+    environment(log_post_llh_interface)$evaluation_counts <- start_from_approx_fit$evaluation_counts
 
   }
 
