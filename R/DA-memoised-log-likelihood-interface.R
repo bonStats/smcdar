@@ -18,6 +18,8 @@ log_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, log_p
   unique_llh_val <- NULL
   x_arg_name <- names(formals(mem_log_likelihood))
 
+  evaluation_counts <- setNames( rep(list(0L),2), c("log_likelihood", "log_like_approx"))
+
   f <- function(x, temp = 1, lh_trans = identity, type = "full_posterior", ...){
 
     # make matrix of x values memoised...
@@ -30,6 +32,11 @@ log_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, log_p
       }
 
     }
+
+    # count evals
+    if(type %in% c("approx_posterior","approx_likelihood","full_approx_lhood_ratio")) evaluation_counts$log_like_approx <<- evaluation_counts$log_like_approx + 1
+
+    if(type %in% c("full_posterior","full_likelihood","full_approx_lhood_ratio")) evaluation_counts$log_likelihood <<- evaluation_counts$log_likelihood + 1
 
     switch(type,
            approx_posterior = temp * mem_log_likelihood_approx(lh_trans(x), ...) + mem_log_prior(x, ...),

@@ -1,4 +1,4 @@
-# Add counts to likelihood evaluations, check artifical timer owrking for DA but especially Full
+# Add no time-optimisation comparison full and DA.
 
 .libPaths(Sys.getenv("R_LIB_USER"))
 outdir <- Sys.getenv("OUT_DIRECTORY")

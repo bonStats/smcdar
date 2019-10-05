@@ -249,6 +249,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
     log_z = log_z,
     eve_var_est = eve_var_est(curr_partl, log_z = log_z, num_iter = i),
     total_time = ttime,
+    evaluation_counts = environment(log_post_llh_interface)$evaluation_counts,
     temps = temps,
     log_post_llh_interface = if(save_post_interface){ log_post_llh_interface} else {NULL},
     iter_summary = iter_summary,
