@@ -161,7 +161,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
     # best_step_scale <- find_best_step_scale(step_scale = sample_step_scale, dist = mh_res$dist, comptime = mh_res$comp_time)
     best_ss <- find_best_step_scale(eta = sample_step_scale,
                                     dist = mh_res$proposal_dist,
-                                    accept = mh_res$accept,
+                                    prob_accept = if(use_da) {mh_res$est_prob_accept} else {mh_res$prob_accept},
                                     surrogate_expected_acceptance = mh_res$expected_pre_accept,
                                     surrogate_cost = mh_res$avg_surr_like_cost,
                                     full_cost = mh_res$avg_full_like_cost,
@@ -171,12 +171,12 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
     pre_accept_prop <- mean(mh_res$pre_accept)
 
     # distance threshold
-    total_dist <- mh_res$actual_dist
+    expected_dist <- if(use_da) {mh_res$est_expected_dist} else {mh_res$expected_dist}
 
     mh_step_count <- 1
 
     # update additional times with best_step_scale
-    while(stats::median(total_dist) < refresh_ejd_threshold){
+    while(stats::median(expected_dist) < refresh_ejd_threshold){
       proposed_partl <- mvn_jitter(particles = curr_partl, step_scale = best_ss$step_scale, var = mvn_var$cov)
       #mh_res <- mh_func(new_particles = proposed_partl, old_particles = curr_partl, var = mvn_var$cov, temp = tail(temps,1) )
       if(use_da){
@@ -188,7 +188,8 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
       accept_prop <- c(accept_prop, mean(mh_res$accept))
       pre_accept_prop <- c(pre_accept_prop, mean(mh_res$pre_accept))
 
-      total_dist <- total_dist + mh_res$actual_dist
+      expected_dist <- if(use_da) {expected_dist + mh_res$est_expected_dist} else {expected_dist + mh_res$expected_dist}
+
       mh_step_count <- mh_step_count + 1
       total_artifical_time <- total_artifical_time + mh_res$extra_artifical_time
 

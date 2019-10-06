@@ -1,4 +1,7 @@
 # Add no time-optimisation comparison full and DA.
+# tryCatch for optimisation, catch NULL?
+# Play with step scale
+# USe gamma fit for dist
 
 .libPaths(Sys.getenv("R_LIB_USER"))
 outdir <- Sys.getenv("OUT_DIRECTORY")
@@ -322,8 +325,8 @@ best_step_scale_ejd_v_time <- function(step_scale, dist, comptime){
 
 }
 
-best_step_scale <- function(eta, dist, accept, D, rho, max_T = 10, surrogate_expected_acceptance, surrogate_cost, full_cost, model = "empirical", da = T){
-
+best_step_scale <- function(eta, dist, prob_accept, D, rho, max_T = 10, surrogate_expected_acceptance, surrogate_cost, full_cost, model = "empirical", da = T){
+ # rename surrogate_expected_acceptance to surrogate_prob_accept
   find_min_iter <- switch(model, # nned to make more robust to situations where only 1 is accepted.
                           empirical = time_steps_to_min_quantile_dist_emp,
                           normal = time_steps_to_min_quantile_dist_normal,
@@ -337,7 +340,7 @@ best_step_scale <- function(eta, dist, accept, D, rho, max_T = 10, surrogate_exp
   for(i in 1:length(unq_eta)){
 
     ue <- unq_eta[i]
-    min_T_res[[i]] <- find_min_iter(dist = dist[eta == ue], accept = accept[eta == ue],  D = D, rho = rho, max_T = max_T)
+    min_T_res[[i]] <- find_min_iter(dist = dist[eta == ue], prob_accept = prob_accept[eta == ue],  D = D, rho = rho, max_T = max_T)
 
   }
 
@@ -463,8 +466,8 @@ run_sim <- function(ss, verbose = F){
                                                                               bias_mean = ss$f_pars$approx_ll_bias_mean,
                                                                               bias_scale = ss$f_pars$approx_ll_bias_scale)
 
-  best_step_scale_f <- function(eta, dist, accept, surrogate_expected_acceptance, surrogate_cost, full_cost, da = T){
-    best_step_scale(eta = eta, dist = dist, accept = accept, D = ss$f_pars$bss_D, rho = ss$f_pars$bss_rho, max_T = 10,
+  best_step_scale_f <- function(eta, dist, prob_accept, surrogate_expected_acceptance, surrogate_cost, full_cost, da = T){
+    best_step_scale(eta = eta, dist = dist, prob_accept = prob_accept, D = ss$f_pars$bss_D, rho = ss$f_pars$bss_rho, max_T = 10,
                     surrogate_expected_acceptance = surrogate_expected_acceptance, surrogate_cost = surrogate_cost, full_cost = full_cost,
                     model = ss$f_pars$bss_model, da = da)
   }

@@ -18,9 +18,11 @@ mh_step <- function(new_particles, old_particles, var, temp, loglike, type, time
   new_loglike_type <- papply(new_particles, fun = loglike, temp = temp, type = type, comp_time = T & time_on)
   old_loglike_type <- papply(old_particles, fun = loglike, temp = temp, type = type, comp_time = F)
 
-  accept <- exp(
+  accept_ratio <- exp(
     new_loglike_type - old_loglike_type
-  ) > stats::runif(num_particles(new_particles))
+  )
+
+  accept <- accept_ratio > stats::runif(num_particles(new_particles))
 
   maha_dist <- papply(new_particles - old_particles, function(x){t(x) %*% solve(var, x)})
 
@@ -41,8 +43,10 @@ mh_step <- function(new_particles, old_particles, var, temp, loglike, type, time
     expected_pre_accept = NA,
     pre_accept = NA,
     accept = accept,
+    prob_accept = pmin(accept_ratio,1),
     proposal_dist = proposal_dist,
     actual_dist = proposal_dist * accept,
+    expected_dist = proposal_dist * prob_accept,
     comp_time = comp_time,
     avg_full_like_cost = avg_full_like_cost,
     avg_surr_like_cost = NA,

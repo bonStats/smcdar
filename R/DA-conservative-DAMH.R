@@ -32,7 +32,9 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
   # conservative version
   log_rho_1 <- pmin( -log_b_const, pmax( log_b_const, log_rho_tilde_1 ) )
 
-  accept_1 <- exp(log_rho_1) > stats::runif(num_particles(new_particles))
+  rho_1 <- exp(log_rho_1)
+
+  accept_1 <- rho_1 > stats::runif(num_particles(new_particles))
 
   full_post_new_particles <- papply(new_particles[accept_1,,drop = F], fun = loglike, type = "full_likelihood", temp = temp, comp_time = T & time_on)
   full_post_old_particles <- papply(old_particles[accept_1,,drop = F], fun = loglike, type = "full_likelihood", temp = temp, comp_time = F) # should be memoised.
@@ -51,6 +53,10 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
   accept[accept_1] <- accept_2
 
   maha_dist <- papply(new_particles - old_particles, function(x){t(x) %*% solve(var, x)})
+
+  expected_pre_accept <- pmin(rho_1, 1)
+  est_prob_accept <- expected_pre_accept
+  est_prob_accept[accept_1] <- est_prob_accept[accept_1] * pmin(rho_2, 1)
 
   if(time_on){
 
@@ -83,11 +89,13 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
   proposal_dist <- sqrt( maha_dist )
 
   return(list(
-    expected_pre_accept = pmin(1, exp(log_rho_1)),
+    expected_pre_accept = expected_pre_accept,
     pre_accept = accept_1,
     accept = accept,
+    est_prob_accept = est_prob_accept,
     proposal_dist = proposal_dist,
     actual_dist = proposal_dist * accept,
+    est_expected_dist = proposal_dist * est_prob_accept,
     comp_time = comp_time,
     avg_full_like_cost = avg_full_like_cost,
     avg_surr_like_cost = avg_surr_like_cost,

@@ -4,12 +4,13 @@
 \alias{time_steps_to_min_quantile_dist_gamma}
 \title{Calculate number of MH steps required until threshold is met.}
 \usage{
-time_steps_to_min_quantile_dist_gamma(dist, accept, D, rho, max_T = 10)
+time_steps_to_min_quantile_dist_gamma(dist, prob_accept, D, rho,
+  max_T = 10)
 }
 \arguments{
 \item{dist}{Proposed distances travelled by each particle.}
 
-\item{accept}{Whether a proposal was accepted or rejected.}
+\item{prob_accept}{Vector (or mean) of MH acceptance probabilities for proposal.}
 
 \item{D}{Threshold distance required to travel in total.}
 

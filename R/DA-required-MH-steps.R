@@ -3,21 +3,16 @@
 #' Emperical version.
 #'
 #' @param dist Proposed distances travelled by each particle.
-#' @param accept Whether a proposal was accepted or rejected.
+#' @param prob_accept Vector (or mean) of MH acceptance probabilities for proposal.
 #' @param D Threshold distance required to travel in total.
 #' @param rho Probability level of exceeding trheshold distance.
 #' @param max_T Maximum number of iterations to compute before "failing".
 #'
 #' @return List with results for each parameter.
 #' @export
-time_steps_to_min_quantile_dist_emp <- function(dist, accept, D, rho, max_T = 10){
+time_steps_to_min_quantile_dist_emp <- function(dist, prob_accept, D, rho, max_T = 10){
 
-  nz_index <- accept
-
-  # not enough non-zeros to estimate
-  if( sum(nz_index) < 3 )  return(list(prob = 0, iter = Inf, sufficient_iter = F))
-
-  acceptance_rate <- mean( nz_index )
+  acceptance_rate <- mean( prob_accept )
   ecdf_nz_dist <- stats::ecdf(dist)
 
   for(tT in 1:max_T){
@@ -40,21 +35,16 @@ time_steps_to_min_quantile_dist_emp <- function(dist, accept, D, rho, max_T = 10
 #' Normal version.
 #'
 #' @param dist Proposed distances travelled by each particle.
-#' @param accept Whether a proposal was accepted or rejected.
+#' @param prob_accept Vector (or mean) of MH acceptance probabilities for proposal.
 #' @param D Threshold distance required to travel in total.
 #' @param rho Probability level of exceeding trheshold distance.
 #' @param max_T Maximum number of iterations to compute before "failing".
 #'
 #' @return List with results for each parameter.
 #' @export
-time_steps_to_min_quantile_dist_normal <- function(dist, accept, D, rho, max_T = 10){
+time_steps_to_min_quantile_dist_normal <- function(dist, prob_accept, D, rho, max_T = 10){
 
-  nz_index <- accept
-
-  # not enough non-zeros to estimate
-  if( sum(nz_index) < 4 )  return(list(prob = 0, iter = Inf, sufficient_iter = F))
-
-  acceptance_rate <- mean( nz_index )
+  acceptance_rate <- mean( prob_accept )
   n_mean <- mean(dist)
   n_sd <- sqrt(stats::var(dist))
 
@@ -78,21 +68,16 @@ time_steps_to_min_quantile_dist_normal <- function(dist, accept, D, rho, max_T =
 #' Gamma version.
 #'
 #' @param dist Proposed distances travelled by each particle.
-#' @param accept Whether a proposal was accepted or rejected.
+#' @param prob_accept Vector (or mean) of MH acceptance probabilities for proposal.
 #' @param D Threshold distance required to travel in total.
 #' @param rho Probability level of exceeding trheshold distance.
 #' @param max_T Maximum number of iterations to compute before "failing".
 #'
 #' @return List with results for each parameter.
 #' @export
-time_steps_to_min_quantile_dist_gamma <- function(dist, accept, D, rho, max_T = 10){
+time_steps_to_min_quantile_dist_gamma <- function(dist, prob_accept, D, rho, max_T = 10){
 
-  nz_index <- accept
-
-  # not enough non-zeros to estimate
-  if( sum(nz_index) < 4 )  return(list(prob = 0, iter = Inf, sufficient_iter = F))
-
-  acceptance_rate <- mean( nz_index )
+  acceptance_rate <- mean( prob_accept )
   gam_fit <- MASS::fitdistr(dist, "gamma", lower = c(0,0))
   g_rate <- gam_fit$estimate["rate"]
   g_shape <- gam_fit$estimate["shape"]
@@ -117,7 +102,7 @@ time_steps_to_min_quantile_dist_gamma <- function(dist, accept, D, rho, max_T = 
 #' Bootstrap version.
 #'
 #' @param dist Proposed distances travelled by each particle.
-#' @param accept Whether a proposal was accepted or rejected.
+#' @param prob_accept Vector (or mean) of MH acceptance probabilities for proposal.
 #' @param D Threshold distance required to travel in total.
 #' @param rho Probability level of exceeding threshold distance.
 #' @param max_T Maximum number of iterations to compute before "failing".
@@ -125,14 +110,9 @@ time_steps_to_min_quantile_dist_gamma <- function(dist, accept, D, rho, max_T = 
 #'
 #' @return List with results for each parameter.
 #' @export
-time_steps_to_min_quantile_dist_bootstrap <- function(dist, accept, D, rho, max_T = 10, boot_samples = 100){
+time_steps_to_min_quantile_dist_bootstrap <- function(dist, prob_accept, D, rho, max_T = 10, boot_samples = 100){
 
-  nz_index <- accept
-
-  # not enough non-zeros to estimate
-  if( sum(nz_index) < 3 )  return(list(prob = 0, iter = Inf, sufficient_iter = F))
-
-  acceptance_rate <- mean( nz_index )
+  acceptance_rate <- mean( prob_accept )
 
   boot_prob_gr_D <- vector(mode = "numeric", length = max_T)
 
