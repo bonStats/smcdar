@@ -300,16 +300,23 @@ visit_nls_optimise_pre_approx_llhood_transformation <- function(par_start, penal
     data.frame(y = 0, matrix(0, nrow = len*2, ncol = ncol(xval)), ll = FALSE, w = sqrt(penalty))
   )
 
-  nls_ridge <- nls(formula =
-                     y ~ ll * ( approx_log_like(b, s, X1, X2, X3, X4, X5) + mu ) + # least squares
+  nls_ridge <- tryCatch(
+    {nls(formula = y ~ ll * ( approx_log_like(b, s, X1, X2, X3, X4, X5) + mu ) + # least squares
                      I(!ll) * ( identity(b) + identity(s) ), #ridge
                    data = dat, start = list(b = par_start[1:5], s = par_start[6:10], mu = par_start[11]),
                    weights = w,
-                   control = list(tol = 1e-02, maxiter = max_iter)
-  )
+                   control = list(tol = 1e-02, maxiter = max_iter))},
+        error = function(e) paste(e)
+    )
 
   # mu first
-  list(par = coef(nls_ridge))
+  if(class(nls_ridge) == "nls") {
+      return( list(par = coef(nls_ridge)) )
+  } else {
+      warning(paste("nls did not converge in", max_iter, "iterations"))
+      return( NULL )
+  }
+
 
 }
 

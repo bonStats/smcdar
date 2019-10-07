@@ -135,6 +135,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
 
         optim_time <- Sys.time()
         approx_ll_tune_optim <- optimise_pre_approx_llhood_transformation(particles = curr_partl, loglike = log_post_llh_interface, D_approx_log_like = Dlog_like_approx_Dbeta, temp = tail(temps, 1), max_iter = 50, par_start = par_start * 0.5)
+        if( is.null(approx_ll_tune_optim) ) approx_ll_tune_optim <- par_start # if error in optim
         optim_time <- Sys.time() - optim_time
 
         pre_trans <- function(x){ (x - approx_ll_tune_optim$par[1:5]) / exp(approx_ll_tune_optim$par[6:10]) }
