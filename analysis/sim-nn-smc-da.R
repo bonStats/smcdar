@@ -437,6 +437,8 @@ sim_settings <- c(rep(list(list(f_pars = NULL, g_pars = g_pars1)), 2),
                   rep(list(list(f_pars = NULL, g_pars = g_pars2)), 2)
 )
 
+sim_settings <- c(sim_settings,sim_settings)
+
 sim_settings[[1]]$f_pars <- sim_settings[[3]]$f_pars <- list(
   num_p = 1000,
   step_scale_set = c(0.25, 0.4, 0.55, 0.7),
@@ -624,7 +626,7 @@ run_sim <- function(ss, verbose = F){
 
 cat("parallel::detectCores():", parallel::detectCores(),"\n")
 
-for(ssi in 2:length(sim_settings)){
+for(ssi in 1:length(sim_settings)){
 
   cat("*SIM",ssi,"*\n")
   res <- mclapply(1:100, function(...)
