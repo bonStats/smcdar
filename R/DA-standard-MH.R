@@ -39,11 +39,13 @@ mh_step <- function(new_particles, old_particles, var, temp, loglike, type, time
     extra_artifical_time <- 0
   }
 
+  prob_accept <- pmin(accept_ratio,1)
+
   return(list(
     expected_pre_accept = NA,
     pre_accept = NA,
     accept = accept,
-    prob_accept = pmin(accept_ratio,1),
+    prob_accept = prob_accept,
     proposal_dist = proposal_dist,
     actual_dist = proposal_dist * accept,
     expected_dist = proposal_dist * prob_accept,
