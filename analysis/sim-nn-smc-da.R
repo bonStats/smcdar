@@ -1,7 +1,5 @@
-# Add no time-optimisation comparison full and DA.
-# tryCatch for optimisation, catch NULL?
 # Play with step scale
-# USe gamma fit for dist
+# USe other fit for opt dist
 
 .libPaths(Sys.getenv("R_LIB_USER"))
 outdir <- Sys.getenv("OUT_DIRECTORY")
@@ -47,7 +45,7 @@ draw_prior <- function(n){
   )
 }
 
-log_like_norm <- function(beta, X, y, sleep_time = 0.1, real_sleep = F){
+log_like_norm <- function(beta, X, y, sleep_time = 10, real_sleep = F){
 
   ll <- sum( dnorm(y, mean = X %*% beta, sd = 0.5, log = T) )
 
@@ -60,15 +58,28 @@ log_like_norm <- function(beta, X, y, sleep_time = 0.1, real_sleep = F){
 
 }
 
-log_like_tdist <- function(beta, X, y, sleep_time = 0.1){
-  if(sleep_time > 0) Sys.sleep(sleep_time)
-  sum( dt(y - X %*% beta, df = 3, log = T) )
+log_like_tdist <- function(beta, X, y, sleep_time = 10, real_sleep = F){
+
+  ll <- sum( dt(y - X %*% beta, df = 3, log = T) )
+
+  if(sleep_time > 0){
+    if(real_sleep) Sys.sleep(sleep_time)
+    else attr(ll, "comptime") <- sleep_time
+  }
+
+  return(ll)
 }
 
-log_like_approx <- function(beta, X, y, bias_mean, bias_scale = 1){
+log_like_approx <- function(beta, X, y, bias_mean, bias_scale = 1, sleep_time = 1, real_sleep = F){
 
-  -50 + sum( dnorm(y, mean = X %*% ( bias_scale * beta + bias_mean), sd = 1, log = T) )
+  ll <- -50 + sum( dnorm(y, mean = X %*% ( bias_scale * beta + bias_mean), sd = 1, log = T) )
 
+  if(sleep_time > 0){
+    if(real_sleep) Sys.sleep(sleep_time)
+    else attr(ll, "comptime") <- sleep_time
+  }
+
+  return(ll)
 }
 # need to change Dlog_like_approx_Dbeta inorder to update this
 # log_like_approx <- function(beta, X, y, bias_mean, bias_scale = 1){
@@ -427,11 +438,13 @@ sim_settings <- c(rep(list(list(f_pars = NULL, g_pars = g_pars1)), 2),
 )
 
 sim_settings[[1]]$f_pars <- sim_settings[[3]]$f_pars <- list(
-  num_p = 250,
+  num_p = 1000,
   step_scale_set = c(0.25, 0.4, 0.55, 0.7),
   par_start = rep(0, 11),
   approx_ll_bias_mean = 1,
   approx_ll_bias_scale = exp(0.1),
+  sleep_ll = 1,
+  sleep_ll_approx = 10,
   bss_model = "normal",
   bss_D = 1,
   bss_rho = 0.5,
@@ -439,12 +452,42 @@ sim_settings[[1]]$f_pars <- sim_settings[[3]]$f_pars <- list(
 )
 
 sim_settings[[2]]$f_pars <- sim_settings[[4]]$f_pars <- list(
-  num_p = 500,
+  num_p = 2000,
   step_scale_set =  c(0.1, 0.25, 0.4, 0.55, 0.7, 0.85),
   par_start = rep(0, 11),
   approx_ll_bias_mean = 1,
   approx_ll_bias_scale = exp(0.1),
+  sleep_ll = 1,
+  sleep_ll_approx = 10,
   bss_model = "normal",
+  bss_D = 1,
+  bss_rho = 0.5,
+  ll_tune_shrinage_penalty = 5
+)
+
+sim_settings[[5]]$f_pars <- sim_settings[[7]]$f_pars <- list(
+  num_p = 1000,
+  step_scale_set = c(0.25, 0.4, 0.55, 0.7),
+  par_start = rep(0, 11),
+  approx_ll_bias_mean = 1,
+  approx_ll_bias_scale = exp(0.1),
+  sleep_ll = 1,
+  sleep_ll_approx = 10,
+  bss_model = "empirical",
+  bss_D = 1,
+  bss_rho = 0.5,
+  ll_tune_shrinage_penalty = 5
+)
+
+sim_settings[[6]]$f_pars <- sim_settings[[8]]$f_pars <- list(
+  num_p = 2000,
+  step_scale_set =  c(0.1, 0.25, 0.4, 0.55, 0.7, 0.85),
+  par_start = rep(0, 11),
+  approx_ll_bias_mean = 1,
+  approx_ll_bias_scale = exp(0.1),
+  sleep_ll = 1,
+  sleep_ll_approx = 10,
+  bss_model = "empirical",
   bss_D = 1,
   bss_rho = 0.5,
   ll_tune_shrinage_penalty = 5
@@ -462,11 +505,12 @@ run_sim <- function(ss, verbose = F){
 
   sim <- ss$g_pars$sim_func(N = ss$g_pars$N, beta = ss$g_pars$true_beta)
 
-  log_like_f <- function(beta) ss$g_pars$log_like(beta, X = sim$X, y = sim$y, sleep_time = 100)
+  log_like_f <- function(beta) ss$g_pars$log_like(beta, X = sim$X, y = sim$y, sleep_time = ss$f_pars$sleep_ll)
   log_like_approx_f <- function(beta) ss$g_pars$log_like_approx(beta, X = sim$X[1:ss$g_pars$N_approx,],
                                                                 y = sim$y[1:ss$g_pars$N_approx],
                                                                 bias_mean = ss$f_pars$approx_ll_bias_mean,
-                                                                bias_scale = ss$f_pars$approx_ll_bias_scale)
+                                                                bias_scale = ss$f_pars$approx_ll_bias_scale,
+                                                                sleep_time = ss$f_pars$sleep_ll_approx)
 
   Dlog_like_approx_Dbeta_f <- function(beta) ss$g_pars$Dlog_like_approx_Dbeta(beta, X = sim$X[1:ss$g_pars$N_approx,],
                                                                               y = sim$y[1:ss$g_pars$N_approx],
