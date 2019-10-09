@@ -54,9 +54,13 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
 
   maha_dist <- papply(new_particles - old_particles, function(x){t(x) %*% solve(var, x)})
 
+
   expected_pre_accept <- pmin(rho_1, 1)
   est_prob_accept <- expected_pre_accept
-  est_prob_accept[accept_1] <- est_prob_accept[accept_1] * pmin(rho_2, 1)
+  accept_2_prob <- pmin(rho_2, 1)
+  est_prob_accept[accept_1] <- est_prob_accept[accept_1] * accept_2_prob
+
+  est_prob_accept[!accept_1] <- est_prob_accept[!accept_1] * mean(accept_2_prob)
 
   if(time_on){
 
