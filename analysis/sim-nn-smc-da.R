@@ -313,19 +313,19 @@ visit_nls_optimise_pre_approx_llhood_transformation <- function(par_start, penal
 
   nls_ridge <- tryCatch(
     {nls(formula = y ~ ll * ( approx_log_like(b, s, X1, X2, X3, X4, X5) + mu ) + # least squares
-                     I(!ll) * ( identity(b) + identity(s) ), #ridge
-                   data = dat, start = list(b = par_start[1:5], s = par_start[6:10], mu = par_start[11]),
-                   weights = w,
-                   control = list(tol = 1e-02, maxiter = max_iter))},
-        error = function(e) paste(e)
-    )
+           I(!ll) * ( identity(b) + identity(s) ), #ridge
+         data = dat, start = list(b = par_start[1:5], s = par_start[6:10], mu = par_start[11]),
+         weights = w,
+         control = list(tol = 1e-02, maxiter = max_iter))},
+    error = function(e) paste(e)
+  )
 
   # mu first
   if(class(nls_ridge) == "nls") {
-      return( list(par = coef(nls_ridge)) )
+    return( list(par = coef(nls_ridge)) )
   } else {
-      warning(paste("nls did not converge in", max_iter, "iterations"))
-      return( NULL )
+    warning(paste("nls did not converge in", max_iter, "iterations"))
+    return( NULL )
   }
 
 
@@ -344,7 +344,7 @@ best_step_scale_ejd_v_time <- function(step_scale, dist, comptime){
 }
 
 best_step_scale <- function(eta, dist, prob_accept, D, rho, max_T = 10, surrogate_expected_acceptance, surrogate_cost, full_cost, model = "empirical", da = T){
- # rename surrogate_expected_acceptance to surrogate_prob_accept
+  # rename surrogate_expected_acceptance to surrogate_prob_accept
   find_min_iter <- switch(model, # nned to make more robust to situations where only 1 is accepted.
                           empirical = time_steps_to_min_quantile_dist_emp,
                           normal = time_steps_to_min_quantile_dist_normal,
@@ -391,6 +391,19 @@ best_step_scale <- function(eta, dist, prob_accept, D, rho, max_T = 10, surrogat
   return(list(step_scale = eta[which_mintotal_cost], expected_iter = min_T[which_mintotal_cost]))
 
 }
+
+best_step_scale_pilot_median <- function(eta, dist, prob_accept, rho){
+
+  tb <- tibble(expected_dist = dist * prob_accept, eta = eta)
+
+  sum_tb <- tb %>% group_by(eta) %>% summarise(q_rho = quantile(expected_dist, probs =  rho))
+
+  best_eta <- sum_tb$eta[which.max(sum_tb$q_rho)]
+
+  return(list(step_scale = best_eta, expected_iter = NA))
+
+}
+
 
 nn_posterior <- function(y, X, sigma, tau){
   p <- ncol(X)
@@ -445,7 +458,7 @@ sim_settings[[1]]$f_pars <- sim_settings[[3]]$f_pars <- list(
   par_start = rep(0, 11),
   approx_ll_bias_mean = 1,
   approx_ll_bias_scale = exp(0.1),
-  sleep_ll = 10,
+  sleep_ll = 1000,
   sleep_ll_approx = 1,
   bss_model = "normal",
   bss_D = 1,
@@ -459,7 +472,7 @@ sim_settings[[2]]$f_pars <- sim_settings[[4]]$f_pars <- list(
   par_start = rep(0, 11),
   approx_ll_bias_mean = 1,
   approx_ll_bias_scale = exp(0.1),
-  sleep_ll = 10,
+  sleep_ll = 1000,
   sleep_ll_approx = 1,
   bss_model = "normal",
   bss_D = 1,
@@ -473,7 +486,7 @@ sim_settings[[5]]$f_pars <- sim_settings[[7]]$f_pars <- list(
   par_start = rep(0, 11),
   approx_ll_bias_mean = 1,
   approx_ll_bias_scale = exp(0.1),
-  sleep_ll = 10,
+  sleep_ll = 1000,
   sleep_ll_approx = 1,
   bss_model = "empirical",
   bss_D = 1,
@@ -487,7 +500,7 @@ sim_settings[[6]]$f_pars <- sim_settings[[8]]$f_pars <- list(
   par_start = rep(0, 11),
   approx_ll_bias_mean = 1,
   approx_ll_bias_scale = exp(0.1),
-  sleep_ll = 10,
+  sleep_ll = 1000,
   sleep_ll_approx = 1,
   bss_model = "empirical",
   bss_D = 1,
@@ -525,6 +538,9 @@ run_sim <- function(ss, verbose = F){
                     model = ss$f_pars$bss_model, da = da)
   }
 
+  best_step_scale_f_simple <- function(eta, dist, prob_accept, ...){
+    best_step_scale_pilot_median(eta = eta, dist = dist, prob_accept = prob_accept, rho = ss$f_pars$bss_rho)
+  }
 
   optimise_pre_approx_llhood_transformation_f <- function(par_start, loglike, D_approx_log_like, temp, ...){
     ss$g_pars$optimise_pre_approx_llhood_transformation(par_start = par_start, penalty = ss$f_pars$ll_tune_shrinage_penalty,
@@ -550,6 +566,25 @@ run_sim <- function(ss, verbose = F){
     verbose = verbose
   )
   )
+  if(verbose) cat("smc full simple opt\n")
+  smc_full_simple <- with(ss$f_pars, run_smc_da(
+    use_da = F, use_approx = F,
+    num_p = num_p,
+    step_scale_set = step_scale_set,
+    par_start = NULL,
+    refresh_ejd_threshold = ss$f_pars$bss_D,
+    log_prior = ss$g_pars$log_prior,
+    log_like = log_like_f,
+    log_like_approx = log_like_approx_f,
+    Dlog_like_approx_Dbeta = NULL,
+    draw_prior = ss$g_pars$draw_prior,
+    optimise_pre_approx_llhood_transformation =  NULL,
+    find_best_step_scale = best_step_scale_f_simple,
+    save_post_interface = ss$g_pars$save_post_interface,
+    verbose = verbose
+  )
+  )
+
   if(verbose) cat("smc full\n")
   smc_full <- with(ss$f_pars, run_smc_da(
     use_da = F, use_approx = F,
@@ -615,6 +650,7 @@ run_sim <- function(ss, verbose = F){
          sim_data = sim,
          smc_da = smc_da,
          smc_full = smc_full,
+         smc_full_simple = smc_full_simple,
          smc_approx = smc_approx,
          smc_approx_then_da = smc_approx_then_da
     )
