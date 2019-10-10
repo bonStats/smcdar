@@ -86,15 +86,28 @@ log_approx_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx
 
   f <- function(x, temp = 1, lh_trans = identity, type = "full_posterior", ...){
 
-    # make matrix of x values memoised...
+    # make matrix of x values memoised, and count log-like evals
     if(type %in% c("full_posterior", "full_approx_lhood_ratio", "full_likelihood")){ # if will evaulate true likelihood
 
       hash_key <- get_hash_memoise(f = mem_log_likelihood, x = x, arg_name = x_arg_name)
 
       if( !has_hash_value_memoise(f = mem_log_likelihood, hash = hash_key) ){
         unique_x <<- rbind(unique_x, x) # matrix
+        # count evals: log-like
+        evaluation_counts$log_likelihood <<- evaluation_counts$log_likelihood + 1
       }
 
+    }
+
+    # count evals
+    if(type %in% c("approx_posterior","approx_likelihood","full_approx_lhood_ratio")){
+
+      hash_key <- get_hash_memoise(f = mem_log_likelihood_approx, x = x, arg_name = x_arg_name)
+
+      if( !has_hash_value_memoise(f = mem_log_likelihood_approx, hash = hash_key) ){
+        # count evals: approx log-like
+        evaluation_counts$log_like_approx <<- evaluation_counts$log_like_approx + 1
+      }
     }
 
     switch(type,
