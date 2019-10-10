@@ -48,9 +48,16 @@ is_upper_triangular_matrix <- function(mat, eps = 1e-10){
 
 }
 
+log_sum_exp <- function(log_w){
+
+  log_w_star <- max(log_w)
+
+  log_w_star + log( sum( exp(log_w - log_w_star) ) )
+
+}
 
 log_weights_normalise <- function(log_w){
 
-  log_w - log( sum( exp(log_w) ) )
+  log_w - log_sum_exp(log_w)
 
 }
