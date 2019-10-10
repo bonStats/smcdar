@@ -44,22 +44,29 @@ time_steps_to_min_quantile_dist_emp <- function(dist, prob_accept, D, rho, max_T
 #' @export
 time_steps_to_min_quantile_dist_normal <- function(dist, prob_accept, D, rho, max_T = 10){
 
-  acceptance_rate <- mean( prob_accept )
-  n_mean <- mean(dist)
-  n_sd <- sqrt(stats::var(dist))
+  expected_dist <- prob_accept * dist
+  n_mean <- mean(expected_dist)
+  n_sd <- sqrt(stats::var(expected_dist))
 
-  for(tT in 1:max_T){
+  pr_D <- stats::pnorm(D, mean = (1:max_T)*n_mean, sd = sqrt(1:max_T)*n_sd, lower.tail = F)
 
-    pr_D <- sum( (1 - stats::pnorm(D, mean = (1:tT)*n_mean, sd = sqrt(1:tT)*n_sd)) * stats::dbinom(1:tT, size = tT, prob = acceptance_rate) )
-    if(pr_D > rho) break;
+  suff_Ts <- which(pr_D > rho)
+
+  if(length(suff_Ts) == 0){
+
+    return(
+      list(prob = NA, iter = max_T, sufficient_iter = F)
+      )
+
+  } else {
+
+    min_suff_Ts <- min(suff_Ts)
+
+    return(
+      list(prob = pr_D[min_suff_Ts], iter = min_suff_Ts, sufficient_iter = T)
+    )
 
   }
-
-  res <- list(prob = pr_D, iter = tT, sufficient_iter = T)
-
-  if(pr_D < rho) res$sufficient_iter <- F
-
-  return(res)
 
 }
 
@@ -77,23 +84,36 @@ time_steps_to_min_quantile_dist_normal <- function(dist, prob_accept, D, rho, ma
 #' @export
 time_steps_to_min_quantile_dist_gamma <- function(dist, prob_accept, D, rho, max_T = 10){
 
-  acceptance_rate <- mean( prob_accept )
-  gam_fit <- MASS::fitdistr(dist, "gamma", lower = c(0,0))
-  g_rate <- gam_fit$estimate["rate"]
-  g_shape <- gam_fit$estimate["shape"]
+  expected_dist <- prob_accept * dist
 
-  for(tT in 1:max_T){
+  # use (small bias) mixed type log-moment estimators (some MLE implementations can fail with infinite spike at zero)
+  N <- length(expected_dist)
+  d_sum <- sum(expected_dist)
+  logd_sum <- sum(log(expected_dist))
+  d_logd_sum <- sum(expected_dist * log(expected_dist))
 
-    pr_D <- sum( (1 - stats::pgamma(D, shape = (1:tT)*g_shape, rate = g_rate)) * stats::dbinom(1:tT, size = tT, prob = acceptance_rate) )
-    if(pr_D > rho) break;
+  g_shape <- ( d_sum ) / ( d_logd_sum - ( logd_sum * d_sum / N)  )
+  g_scale <- (d_logd_sum / N) - ( logd_sum * d_sum / (N^2) )
+
+  pr_D <- stats::pgamma(D, shape = (1:max_T)*g_shape, scale = g_scale, lower.tail = F)
+
+  suff_Ts <- which(pr_D > rho)
+
+  if(length(suff_Ts) == 0){
+
+    return(
+      list(prob = NA, iter = max_T, sufficient_iter = F)
+    )
+
+  } else {
+
+    min_suff_Ts <- min(suff_Ts)
+
+    return(
+      list(prob = pr_D[min_suff_Ts], iter = min_suff_Ts, sufficient_iter = T)
+    )
 
   }
-
-  res <- list(prob = pr_D, iter = tT, sufficient_iter = T)
-
-  if(pr_D < rho) res$sufficient_iter <- F
-
-  return(res)
 
 }
 
@@ -112,22 +132,30 @@ time_steps_to_min_quantile_dist_gamma <- function(dist, prob_accept, D, rho, max
 #' @export
 time_steps_to_min_quantile_dist_bootstrap <- function(dist, prob_accept, D, rho, max_T = 10, boot_samples = 100){
 
-  acceptance_rate <- mean( prob_accept )
+  expected_dist <- dist*prob_accept
 
-  boot_prob_gr_D <- vector(mode = "numeric", length = max_T)
+  pr_D <- vector(mode = "numeric", length = max_T)
 
   for(tT in 1:max_T){
-
-    boot_prob_gr_D[tT] <- mean(rowSums(matrix(sample(dist, size = boot_samples * tT, replace = T), ncol = tT)) > D)
-    pr_D <- sum( ( 1 - boot_prob_gr_D[1:tT] ) * stats::dbinom(1:tT, size = tT, prob = acceptance_rate) )
-    if(pr_D > rho) break;
-
+    pr_D[tT] <- mean(rowSums(matrix(sample(expected_dist, size = boot_samples * tT, replace = T), ncol = tT)) > D)
   }
 
-  res <- list(prob = pr_D, iter = tT, sufficient_iter = T)
+  suff_Ts <- which(pr_D > rho)
 
-  if(pr_D < rho) res$sufficient_iter <- F
+  if(length(suff_Ts) == 0){
 
-  return(res)
+    return(
+      list(prob = NA, iter = max_T, sufficient_iter = F)
+    )
+
+  } else {
+
+    min_suff_Ts <- min(suff_Ts)
+
+    return(
+      list(prob = pr_D[min_suff_Ts], iter = min_suff_Ts, sufficient_iter = T)
+    )
+
+  }
 
 }
