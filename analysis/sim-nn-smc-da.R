@@ -388,7 +388,7 @@ best_step_scale <- function(eta, dist, prob_accept, D, rho, max_T = 10, surrogat
     which_mintotal_cost <- min_mh_cost(min_T)
   }
 
-  return(list(step_scale = eta[which_mintotal_cost], expected_iter = min_T[which_mintotal_cost]))
+  return(list(step_scale = unq_eta[which_mintotal_cost], expected_iter = min_T[which_mintotal_cost]))
 
 }
 
