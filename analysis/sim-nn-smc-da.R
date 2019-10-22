@@ -6,6 +6,8 @@ outdir <- Sys.getenv("OUT_DIRECTORY")
 
 devtools::install_github("bonStats/smcdar", lib = Sys.getenv("R_LIB_USER"))
 
+sleep_ll <- 10
+
 #### load packages ####
 
 library(smcdar)
@@ -458,9 +460,9 @@ sim_settings[[1]]$f_pars <- sim_settings[[3]]$f_pars <- list(
   par_start = rep(0, 11),
   approx_ll_bias_mean = 0.25,
   approx_ll_bias_scale = exp(0.1),
-  sleep_ll = 10,
+  sleep_ll = sleep_ll,
   sleep_ll_approx = 0.01,
-  bss_model = "normal",
+  bss_model = "gamma",
   bss_D = 1,
   bss_rho = 0.5,
   ll_tune_shrinage_penalty = 5
@@ -472,9 +474,9 @@ sim_settings[[2]]$f_pars <- sim_settings[[4]]$f_pars <- list(
   par_start = rep(0, 11),
   approx_ll_bias_mean = 0.25,
   approx_ll_bias_scale = exp(0.1),
-  sleep_ll = 10,
+  sleep_ll = sleep_ll,
   sleep_ll_approx = 0.01,
-  bss_model = "normal",
+  bss_model = "gamma",
   bss_D = 1,
   bss_rho = 0.5,
   ll_tune_shrinage_penalty = 5
@@ -486,9 +488,9 @@ sim_settings[[5]]$f_pars <- sim_settings[[7]]$f_pars <- list(
   par_start = rep(0, 11),
   approx_ll_bias_mean = 0.25,
   approx_ll_bias_scale = exp(0.1),
-  sleep_ll = 10,
+  sleep_ll = sleep_ll,
   sleep_ll_approx = 0.01,
-  bss_model = "empirical",
+  bss_model = "bootstrap",
   bss_D = 1,
   bss_rho = 0.5,
   ll_tune_shrinage_penalty = 5
@@ -500,13 +502,14 @@ sim_settings[[6]]$f_pars <- sim_settings[[8]]$f_pars <- list(
   par_start = rep(0, 11),
   approx_ll_bias_mean = 0.25,
   approx_ll_bias_scale = exp(0.1),
-  sleep_ll = 10,
+  sleep_ll = sleep_ll,
   sleep_ll_approx = 0.01,
-  bss_model = "empirical",
+  bss_model = "bootstrap",
   bss_D = 1,
   bss_rho = 0.5,
   ll_tune_shrinage_penalty = 5
 )
+
 
 ####
 
@@ -533,7 +536,7 @@ run_sim <- function(ss, verbose = F){
                                                                               bias_scale = ss$f_pars$approx_ll_bias_scale)
 
   best_step_scale_f <- function(eta, dist, prob_accept, surrogate_expected_acceptance, surrogate_cost, full_cost, da = T){
-    best_step_scale(eta = eta, dist = dist, prob_accept = prob_accept, D = ss$f_pars$bss_D, rho = ss$f_pars$bss_rho, max_T = 20,
+    best_step_scale(eta = eta, dist = dist, prob_accept = prob_accept, D = ss$f_pars$bss_D, rho = ss$f_pars$bss_rho, max_T = 40,
                     surrogate_expected_acceptance = surrogate_expected_acceptance, surrogate_cost = surrogate_cost, full_cost = full_cost,
                     model = ss$f_pars$bss_model, da = da)
   }
