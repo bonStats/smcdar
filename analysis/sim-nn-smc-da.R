@@ -456,7 +456,7 @@ sim_settings <- c(sim_settings,sim_settings)
 
 sim_settings[[1]]$f_pars <- sim_settings[[3]]$f_pars <- list(
   num_p = 1000,
-  step_scale_set = c(0.25, 0.4, 0.55, 0.7),
+  step_scale_set = c(0.1, seq(from = 0.25, to = 2.75, by = 0.5)),
   par_start = rep(0, 11),
   approx_ll_bias_mean = 0.25,
   approx_ll_bias_scale = exp(0.1),
@@ -470,7 +470,7 @@ sim_settings[[1]]$f_pars <- sim_settings[[3]]$f_pars <- list(
 
 sim_settings[[2]]$f_pars <- sim_settings[[4]]$f_pars <- list(
   num_p = 2000,
-  step_scale_set =  c(0.1, 0.25, 0.4, 0.55, 0.7, 0.85),
+  step_scale_set =  c(0.1, seq(from = 0.25, to = 3, by = 0.25)),
   par_start = rep(0, 11),
   approx_ll_bias_mean = 0.25,
   approx_ll_bias_scale = exp(0.1),
@@ -484,7 +484,7 @@ sim_settings[[2]]$f_pars <- sim_settings[[4]]$f_pars <- list(
 
 sim_settings[[5]]$f_pars <- sim_settings[[7]]$f_pars <- list(
   num_p = 1000,
-  step_scale_set = c(0.25, 0.4, 0.55, 0.7),
+  step_scale_set = c(0.1, seq(from = 0.25, to = 2.75, by = 0.5)),
   par_start = rep(0, 11),
   approx_ll_bias_mean = 0.25,
   approx_ll_bias_scale = exp(0.1),
@@ -498,7 +498,7 @@ sim_settings[[5]]$f_pars <- sim_settings[[7]]$f_pars <- list(
 
 sim_settings[[6]]$f_pars <- sim_settings[[8]]$f_pars <- list(
   num_p = 2000,
-  step_scale_set =  c(0.1, 0.25, 0.4, 0.55, 0.7, 0.85),
+  step_scale_set =  c(0.1, seq(from = 0.25, to = 3, by = 0.25)),
   par_start = rep(0, 11),
   approx_ll_bias_mean = 0.25,
   approx_ll_bias_scale = exp(0.1),
