@@ -45,7 +45,8 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
     ( full_post_new_particles - full_post_old_particles ) -
     ( approx_trans_llh_new_particles - approx_trans_llh_old_particles)
 
-  rho_2 <- exp(log_rho_tilde_1[accept_1] + log_rho_tilde_2 - log_rho_1[accept_1]) # only for accepted particles
+  log_rho_2 <- log_rho_tilde_1[accept_1] + log_rho_tilde_2 - log_rho_1[accept_1]
+  rho_2 <- exp(log_rho_2) # only for accepted particles
 
   accept_2 <- rho_2 > stats::runif(sum(accept_1))
 
@@ -55,12 +56,20 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
   maha_dist <- papply(new_particles - old_particles, function(x){t(x) %*% solve(var, x)})
 
 
-  expected_pre_accept <- pmin(rho_1, 1)
-  est_prob_accept <- expected_pre_accept
-  accept_2_prob <- pmin(rho_2, 1)
-  est_prob_accept[accept_1] <- est_prob_accept[accept_1] * accept_2_prob
+  est_true_log_mh <- rep(NA_real_, length = length(accept))
+  est_true_log_mh[accept_1] <- full_post_new_particles - full_post_old_particles
 
-  est_prob_accept[!accept_1] <- est_prob_accept[!accept_1] * mean(accept_2_prob)
+  # linear reg:
+  log_mh <- data.frame(true_mh = est_true_log_mh[accept_1],
+                   surr_mh = log_rho_tilde_1[accept_1])
+  est_ts_md <- stats::lm(true_mh ~ surr_mh, data = log_mh)
+
+  est_true_log_mh[!accept_1] <- predict(est_ts_md, data.frame(surr_mh = log_rho_tilde_1[!accept_1]))
+
+
+  expected_pre_accept <- pmin(rho_1, 1)
+  est_prob_accept <- pmin(exp(est_true_log_mh), 1)
+
 
   if(time_on){
 
