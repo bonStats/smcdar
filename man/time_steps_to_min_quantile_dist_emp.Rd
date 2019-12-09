@@ -4,8 +4,7 @@
 \alias{time_steps_to_min_quantile_dist_emp}
 \title{Calculate number of MH steps required until threshold is met.}
 \usage{
-time_steps_to_min_quantile_dist_emp(dist, prob_accept, D, rho,
-  max_T = 10)
+time_steps_to_min_quantile_dist_emp(dist, prob_accept, D, rho, max_T = 10)
 }
 \arguments{
 \item{dist}{Proposed distances travelled by each particle.}

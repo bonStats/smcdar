@@ -4,8 +4,7 @@
 \alias{mh_step}
 \title{MH for symmetric kernel.}
 \usage{
-mh_step(new_particles, old_particles, var, temp, loglike, type,
-  time_on = T)
+mh_step(new_particles, old_particles, var, temp, loglike, type, time_on = T)
 }
 \arguments{
 \item{new_particles}{Locations for proposed new particles.}

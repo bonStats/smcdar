@@ -4,8 +4,14 @@
 \alias{time_steps_to_min_quantile_dist_bootstrap}
 \title{Calculate number of MH steps required until threshold is met.}
 \usage{
-time_steps_to_min_quantile_dist_bootstrap(dist, prob_accept, D, rho,
-  max_T = 10, boot_samples = 100)
+time_steps_to_min_quantile_dist_bootstrap(
+  dist,
+  prob_accept,
+  D,
+  rho,
+  max_T = 10,
+  boot_samples = 100
+)
 }
 \arguments{
 \item{dist}{Proposed distances travelled by each particle.}

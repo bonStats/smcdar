@@ -4,11 +4,25 @@
 \alias{run_smc_da}
 \title{Run SMC sampler with DA (or possibly not DA methods)}
 \usage{
-run_smc_da(num_p, step_scale_set, use_da, use_approx = F,
-  start_from_approx = F, refresh_ejd_threshold, par_start, log_prior,
-  log_like, log_like_approx, Dlog_like_approx_Dbeta, draw_prior,
-  start_from_approx_fit, optimise_pre_approx_llhood_transformation,
-  find_best_step_scale, save_post_interface, verbose = F)
+run_smc_da(
+  num_p,
+  step_scale_set,
+  use_da,
+  use_approx = F,
+  start_from_approx = F,
+  refresh_ejd_threshold,
+  par_start,
+  log_prior,
+  log_like,
+  log_like_approx,
+  Dlog_like_approx_Dbeta,
+  draw_prior,
+  start_from_approx_fit,
+  optimise_pre_approx_llhood_transformation,
+  find_best_step_scale,
+  save_post_interface,
+  verbose = F
+)
 }
 \arguments{
 \item{num_p}{Number of particles.}

@@ -3,7 +3,6 @@
 \docType{package}
 \name{smcdar}
 \alias{smcdar}
-\alias{smcdar-package}
 \title{\code{smcdar}: A package for delayed-acceptance SMC.}
 \description{
 smcdar...

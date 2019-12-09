@@ -4,8 +4,14 @@
 \alias{mvn_jitter}
 \title{Jitter particles object with MVN kernel.}
 \usage{
-mvn_jitter(particles, step_scale = 1, var = NULL, prec = NULL,
-  var_chol = NULL, prec_chol = NULL)
+mvn_jitter(
+  particles,
+  step_scale = 1,
+  var = NULL,
+  prec = NULL,
+  var_chol = NULL,
+  prec_chol = NULL
+)
 }
 \arguments{
 \item{particles}{Particles to be jittered.}

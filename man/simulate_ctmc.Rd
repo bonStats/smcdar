@@ -4,8 +4,7 @@
 \alias{simulate_ctmc}
 \title{Simulate continuous-time Markov chain}
 \usage{
-simulate_ctmc(generator_matrix, initial_state_prob, initial_state,
-  total_time)
+simulate_ctmc(generator_matrix, initial_state_prob, initial_state, total_time)
 }
 \arguments{
 \item{generator_matrix}{Square generator matrix (possibly sparse).}

@@ -4,8 +4,17 @@
 \alias{simulate_lotka_volterra_ctmc}
 \title{Simulate continuous-time Markov chain of Lotka-Volterra model}
 \usage{
-simulate_lotka_volterra_ctmc(theta, y1_min = 0, y2_min = 0, y1_max,
-  y2_max, initial_y1, initial_y2, initial_state_prob, total_time)
+simulate_lotka_volterra_ctmc(
+  theta,
+  y1_min = 0,
+  y2_min = 0,
+  y1_max,
+  y2_max,
+  initial_y1,
+  initial_y2,
+  initial_state_prob,
+  total_time
+)
 }
 \arguments{
 \item{theta}{Numeric vector of length 3.}

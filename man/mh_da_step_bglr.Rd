@@ -4,8 +4,15 @@
 \alias{mh_da_step_bglr}
 \title{Delayed-acceptance MH for symmetric kernel.}
 \usage{
-mh_da_step_bglr(new_particles, old_particles, var, temp, loglike,
-  pre_trans = identity, time_on = T)
+mh_da_step_bglr(
+  new_particles,
+  old_particles,
+  var,
+  temp,
+  loglike,
+  pre_trans = identity,
+  time_on = T
+)
 }
 \arguments{
 \item{new_particles}{Locations for proposed new particles.}

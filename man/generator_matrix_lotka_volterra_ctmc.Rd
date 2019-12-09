@@ -4,8 +4,13 @@
 \alias{generator_matrix_lotka_volterra_ctmc}
 \title{Generator matrix for Lotka-Volterra continuous-time Markov chain}
 \usage{
-generator_matrix_lotka_volterra_ctmc(theta, y1_min = 0L, y1_max,
-  y2_min = 0L, y2_max)
+generator_matrix_lotka_volterra_ctmc(
+  theta,
+  y1_min = 0L,
+  y1_max,
+  y2_min = 0L,
+  y2_max
+)
 }
 \arguments{
 \item{theta}{Numeric vector of length 3.}
