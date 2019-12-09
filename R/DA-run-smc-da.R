@@ -112,14 +112,11 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
     curr_log_post <- replace(x = curr_log_post, is.na(curr_log_post), -Inf)
 
     # weight update
-    weights(curr_partl, log = T) <- weights(curr_partl, log = T) + curr_log_post - prev_log_post
+    weights(curr_partl, log = T) <- weights(curr_partl, log = T, normalise = T) + curr_log_post - prev_log_post
 
     log_z <- log_z + log(sum(weights(curr_partl, log = F, normalise = F)))
 
     mvn_var <- stats::cov.wt(curr_partl, wt =  weights(curr_partl, normalise = F), method = "unbiased")
-
-    # normalise weights
-    weights(curr_partl, log = T) <- weights(curr_partl, log = T, normalise = T)
 
     ## resample (index also returned, to see duplicates.)
     rs_obj <- resample_stratified(curr_partl, num_strata = 10)
