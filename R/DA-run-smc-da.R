@@ -50,7 +50,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
     temps <- 0
 
     curr_partl <- particles(beta = draw_prior(num_p))
-    log_z <- 0
+    log_z <- 0 # Z_1 = 1 due to annealing
 
   } else {
 
@@ -117,6 +117,9 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
     log_z <- log_z + log(sum(weights(curr_partl, log = F, normalise = F)))
 
     mvn_var <- stats::cov.wt(curr_partl, wt =  weights(curr_partl, normalise = F), method = "unbiased")
+
+    # normalise weights
+    weights(curr_partl, log = T) <- weights(curr_partl, log = T, normalise = T)
 
     ## resample (index also returned, to see duplicates.)
     rs_obj <- resample_stratified(curr_partl, num_strata = 10)
