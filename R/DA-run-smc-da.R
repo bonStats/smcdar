@@ -172,12 +172,12 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
     pre_accept_prop <- mean(mh_res$pre_accept)
 
     # distance threshold
-    expected_dist <- if(use_da) {mh_res$est_expected_dist} else {mh_res$expected_dist}
+    expected_sq_dist <- if(use_da) {mh_res$est_expected_dist^2} else {mh_res$expected_dist^2}
 
     mh_step_count <- 1
 
     # update additional times with best_step_scale
-    while(stats::median(expected_dist) < refresh_ejd_threshold){
+    while(stats::median(expected_sq_dist) < refresh_ejd_threshold){
       proposed_partl <- mvn_jitter(particles = curr_partl, step_scale = best_ss$step_scale, var = mvn_var$cov)
       #mh_res <- mh_func(new_particles = proposed_partl, old_particles = curr_partl, var = mvn_var$cov, temp = tail(temps,1) )
       if(use_da){
@@ -189,7 +189,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
       accept_prop <- c(accept_prop, mean(mh_res$accept))
       pre_accept_prop <- c(pre_accept_prop, mean(mh_res$pre_accept))
 
-      expected_dist <- if(use_da) {expected_dist + mh_res$est_expected_dist} else {expected_dist + mh_res$expected_dist}
+      expected_sq_dist <- if(use_da) {expected_sq_dist + (mh_res$est_expected_dist^2)} else {expected_sq_dist + (mh_res$expected_dist^2)}
 
       mh_step_count <- mh_step_count + 1
       total_artifical_time <- total_artifical_time + mh_res$extra_artifical_time

@@ -13,7 +13,7 @@
 time_steps_to_min_quantile_dist_emp <- function(dist, prob_accept, D, rho, max_T = 10){
 
   acceptance_rate <- mean( prob_accept )
-  ecdf_nz_dist <- stats::ecdf(dist)
+  ecdf_nz_dist <- stats::ecdf(dist^2)
 
   for(tT in 1:max_T){
 
@@ -44,7 +44,7 @@ time_steps_to_min_quantile_dist_emp <- function(dist, prob_accept, D, rho, max_T
 #' @export
 time_steps_to_min_quantile_dist_normal <- function(dist, prob_accept, D, rho, max_T = 10){
 
-  expected_dist <- prob_accept * dist
+  expected_dist <- prob_accept * (dist^2)
   n_mean <- mean(expected_dist)
   n_sd <- sqrt(stats::var(expected_dist))
 
@@ -84,7 +84,7 @@ time_steps_to_min_quantile_dist_normal <- function(dist, prob_accept, D, rho, ma
 #' @export
 time_steps_to_min_quantile_dist_gamma <- function(dist, prob_accept, D, rho, max_T = 10){
 
-  expected_dist <- prob_accept * dist
+  expected_dist <- prob_accept * (dist^2)
 
   # use (small bias) mixed type log-moment estimators (some MLE implementations can fail with infinite spike at zero)
   N <- length(expected_dist)
@@ -132,7 +132,7 @@ time_steps_to_min_quantile_dist_gamma <- function(dist, prob_accept, D, rho, max
 #' @export
 time_steps_to_min_quantile_dist_bootstrap <- function(dist, prob_accept, D, rho, max_T = 10, boot_samples = 100){
 
-  expected_dist <- dist*prob_accept
+  expected_dist <- prob_accept * (dist^2)
 
   pr_D <- vector(mode = "numeric", length = max_T)
 
