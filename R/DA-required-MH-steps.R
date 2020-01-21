@@ -177,7 +177,7 @@ time_steps_to_min_quantile_dist_median <- function(dist, prob_accept, D, rho, ma
   expected_dist <- prob_accept * (dist^2)
 
   # use the median of the expected_dist
-  iter <- as.integer( ceiling( D / median(expected_dist) ) )
+  iter <- ceiling( D / median(expected_dist) )
 
   if( !is.finite(iter) ){
 
