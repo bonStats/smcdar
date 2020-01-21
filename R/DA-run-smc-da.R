@@ -131,7 +131,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
     if(use_da){
 
       # pre-tranformation for approx likelihood
-      if(i > 1){
+      if(i > 1 & !is.null(optimise_pre_approx_llhood_transformation) ){
 
         optim_time <- Sys.time()
         approx_ll_tune_optim <- optimise_pre_approx_llhood_transformation(particles = curr_partl, loglike = log_post_llh_interface, D_approx_log_like = Dlog_like_approx_Dbeta, temp = tail(temps, 1), par_start = par_start * 0.5)

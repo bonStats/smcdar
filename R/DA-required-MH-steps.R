@@ -179,9 +179,18 @@ time_steps_to_min_quantile_dist_median <- function(dist, prob_accept, D, rho, ma
   # use the median of the expected_dist
   iter <- as.integer( ceiling( D / median(expected_dist) ) )
 
-  return(
-    list(prob = 0.5, iter = iter, sufficient_iter = T)
-  )
+  if( !is.finite(iter) ){
 
+    return(
+      list(prob = NA, iter = max_T, sufficient_iter = F)
+    )
+
+  } else {
+
+    return(
+      list(prob = 0.5, iter = iter, sufficient_iter = T)
+    )
+
+  }
 
 }
