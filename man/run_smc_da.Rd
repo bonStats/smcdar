@@ -20,6 +20,7 @@ run_smc_da(
   start_from_approx_fit,
   optimise_pre_approx_llhood_transformation,
   find_best_step_scale,
+  max_anneal_temp = 1,
   save_post_interface,
   verbose = F
 )
@@ -54,6 +55,8 @@ run_smc_da(
 \item{optimise_pre_approx_llhood_transformation}{Function to optimise pre-transformation for approximate likelihood.}
 
 \item{find_best_step_scale}{Function to find best step scale.}
+
+\item{max_anneal_temp}{Temperature to anneal likelihood (posterior) to. Max 1.}
 
 \item{save_post_interface}{Logical. Should the memoised interface to the likelihood functions be returned (very large).}
 

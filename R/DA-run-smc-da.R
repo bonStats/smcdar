@@ -15,6 +15,7 @@
 #' @param start_from_approx_fit SMC object (list) with approximate fit if start_from_approx is TRUE.
 #' @param optimise_pre_approx_llhood_transformation Function to optimise pre-transformation for approximate likelihood.
 #' @param find_best_step_scale Function to find best step scale.
+#' @param max_anneal_temp Temperature to anneal likelihood (posterior) to. Max 1.
 #' @param save_post_interface Logical. Should the memoised interface to the likelihood functions be returned (very large).
 #' @param verbose Logical. Should the SMC iterations update be printed to console?
 #'
@@ -26,13 +27,17 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
                        start_from_approx_fit,
                        optimise_pre_approx_llhood_transformation,
                        find_best_step_scale,
+                       max_anneal_temp = 1,
                        save_post_interface,
                        verbose = F
 ){
 
   stopifnot(
     ! (use_da & use_approx),
-    !start_from_approx | use_da
+    !start_from_approx | use_da,
+    is.numeric(max_anneal_temp),
+    max_anneal_temp <= 1,
+    max_anneal_temp > 0
   )
 
 
@@ -58,7 +63,8 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
       log_approx_likelihood_anneal_func_da(
         log_likelihood = log_like,
         log_like_approx = log_like_approx,
-        log_prior = log_prior
+        log_prior = log_prior,
+        max_approx_anneal = max_anneal_temp
       )
 
     i <- 1
@@ -74,10 +80,10 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
   iter_summary <- list()
   particle_list <- list(curr_partl)
 
-  while(tail(temps,1) < 1){
+  while(tail(temps,1) < max_anneal_temp){
     stime <- Sys.time()
 
-    curr_log_post <- papply(curr_partl, fun = log_post_llh_interface, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
+    curr_log_post <- papply(curr_partl, fun = log_post_llh_interface, temp = tail(temps, 1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
 
     ## new temp, update posterior
     # use ESS to find temp
@@ -94,17 +100,20 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
       res
     }
 
-    if(half_ess_temp_obj(1) > 0){
+    if(half_ess_temp_obj(max_anneal_temp) > 0){
 
-      temp_optim <- list(root = 1)
+      temp_optim <- list(root = max_anneal_temp)
 
     } else {
 
-      temp_optim <- stats::uniroot(f = half_ess_temp_obj, interval = c(tail(temps,1),1), tol = 1e-08)
+      temp_optim <- stats::uniroot(f = half_ess_temp_obj,
+                                   interval = c(tail(temps,1), max_anneal_temp),
+                                   tol = 1e-08
+                                   )
 
     }
 
-    temps <- c( temps, min(1, temp_optim$root) )
+    temps <- c( temps, min(max_anneal_temp, temp_optim$root) )
 
     # new log posterior
     prev_log_post <- curr_log_post

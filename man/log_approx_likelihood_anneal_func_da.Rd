@@ -7,7 +7,8 @@
 log_approx_likelihood_anneal_func_da(
   log_likelihood,
   log_like_approx,
-  log_prior
+  log_prior,
+  max_approx_anneal
 )
 }
 \arguments{
@@ -16,6 +17,8 @@ log_approx_likelihood_anneal_func_da(
 \item{log_like_approx}{Approximate log-likelihood function.}
 
 \item{log_prior}{Log-prior function.}
+
+\item{max_approx_anneal}{Maximum value of temperature during approximate anneal.}
 }
 \value{
 Value of log-likelihood function.

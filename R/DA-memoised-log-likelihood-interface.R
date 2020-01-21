@@ -51,7 +51,6 @@ log_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, log_p
 
     switch(type,
            approx_posterior = temp * mem_log_likelihood_approx(lh_trans(x), ...) + mem_log_prior(x, ...),
-           full_approx_lhood_ratio = temp * (  mem_log_likelihood(x, ...) - mem_log_likelihood_approx(lh_trans(x), ...) ),
            approx_likelihood = temp * mem_log_likelihood_approx(lh_trans(x), ...),
            full_likelihood =  temp * mem_log_likelihood(x, ...),
            full_posterior = temp * mem_log_likelihood(x, ...) + mem_log_prior(x, ...),
@@ -71,10 +70,11 @@ log_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, log_p
 #' @param log_likelihood (Full) log-likelihood function.
 #' @param log_like_approx Approximate log-likelihood function.
 #' @param log_prior Log-prior function.
+#' @param max_approx_anneal Maximum value of temperature during approximate anneal.
 #'
 #' @return Value of log-likelihood function.
 #' @export
-log_approx_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, log_prior){
+log_approx_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, log_prior, max_approx_anneal){
 
   mem_log_likelihood <- memoise::memoise(log_likelihood)
   mem_log_likelihood_approx <-  memoise::memoise(log_like_approx)
@@ -111,11 +111,10 @@ log_approx_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx
     }
 
     switch(type,
-           approx_posterior = temp * mem_log_likelihood_approx(lh_trans(x), ...) + ( 1 - temp ) * mem_log_likelihood_approx(x, ...) + mem_log_prior(x, ...),
-           full_approx_lhood_ratio = temp * (  mem_log_likelihood(x, ...) - mem_log_likelihood_approx(lh_trans(x), ...) ),
+           #approx_posterior = temp * mem_log_likelihood_approx(lh_trans(x), ...) + ( 1 - temp ) * mem_log_likelihood_approx(x, ...) + mem_log_prior(x, ...),
            approx_likelihood = temp * mem_log_likelihood_approx(lh_trans(x), ...),
            full_likelihood =  temp * mem_log_likelihood(x, ...),
-           full_posterior = temp * mem_log_likelihood(x, ...) + ( 1 - temp ) * mem_log_likelihood_approx(x, ...) + mem_log_prior(x, ...),
+           full_posterior = temp * mem_log_likelihood(x, ...) + ( 1 - temp ) * max_approx_anneal * mem_log_likelihood_approx(x, ...) + mem_log_prior(x, ...),
            prior =  mem_log_prior(x, ...)
     )
 
