@@ -80,6 +80,8 @@ log_approx_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx
   mem_log_likelihood_approx <-  memoise::memoise(log_like_approx)
   mem_log_prior <- memoise::memoise(log_prior)
 
+  force(max_approx_anneal)
+
   unique_x <- NULL
   unique_llh_val <- NULL
   x_arg_name <- names(formals(mem_log_likelihood))
@@ -111,7 +113,7 @@ log_approx_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx
     }
 
     switch(type,
-           #approx_posterior = temp * mem_log_likelihood_approx(lh_trans(x), ...) + ( 1 - temp ) * mem_log_likelihood_approx(x, ...) + mem_log_prior(x, ...),
+           approx_posterior = temp * mem_log_likelihood_approx(lh_trans(x), ...) + ( 1 - temp ) * max_approx_anneal * mem_log_likelihood_approx(x, ...) + mem_log_prior(x, ...),
            approx_likelihood = temp * mem_log_likelihood_approx(lh_trans(x), ...),
            full_likelihood =  temp * mem_log_likelihood(x, ...),
            full_posterior = temp * mem_log_likelihood(x, ...) + ( 1 - temp ) * max_approx_anneal * mem_log_likelihood_approx(x, ...) + mem_log_prior(x, ...),
