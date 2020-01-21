@@ -159,3 +159,29 @@ time_steps_to_min_quantile_dist_bootstrap <- function(dist, prob_accept, D, rho,
   }
 
 }
+
+#' Calculate number of MH steps required until threshold is met.
+#'
+#' Median version.
+#'
+#' @param dist Proposed distances travelled by each particle.
+#' @param prob_accept Vector (or mean) of MH acceptance probabilities for proposal.
+#' @param D Threshold distance required to travel in total.
+#' @param rho Probability level of exceeding trheshold distance.
+#' @param max_T Maximum number of iterations to compute before "failing".
+#'
+#' @return List with results for each parameter.
+#' @export
+time_steps_to_min_quantile_dist_median <- function(dist, prob_accept, D, rho, max_T = 10){
+
+  expected_dist <- prob_accept * (dist^2)
+
+  # use the median of the expected_dist
+  iter <- as.integer( ceiling( D / median(expected_dist) ) )
+
+  return(
+    list(prob = 0.5, iter = iter, sufficient_iter = T)
+  )
+
+
+}
