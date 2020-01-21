@@ -34,7 +34,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
 
   stopifnot(
     ! (use_da & use_approx),
-    !start_from_approx | use_da,
+    #!start_from_approx | use_da,
     is.numeric(max_anneal_temp),
     max_anneal_temp <= 1,
     max_anneal_temp > 0
@@ -64,7 +64,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
         log_likelihood = log_like,
         log_like_approx = log_like_approx,
         log_prior = log_prior,
-        max_approx_anneal = max_anneal_temp
+        max_approx_anneal = start_from_approx_fit$max_anneal_temp
       )
 
     i <- 1
@@ -186,7 +186,8 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
     mh_step_count <- 1
 
     # update additional times with best_step_scale
-    while(stats::median(expected_sq_dist) < refresh_ejd_threshold){
+    while( (stats::median(expected_sq_dist) < refresh_ejd_threshold) & (mh_step_count < 50) ){
+
       proposed_partl <- mvn_jitter(particles = curr_partl, step_scale = best_ss$step_scale, var = mvn_var$cov)
       #mh_res <- mh_func(new_particles = proposed_partl, old_particles = curr_partl, var = mvn_var$cov, temp = tail(temps,1) )
       if(use_da){
@@ -256,17 +257,20 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
 
   # make function to return approx posterior...
 
-  return(list(
-    particles = curr_partl,
-    log_z = log_z,
-    eve_var_est = eve_var_est(curr_partl, log_z = log_z, num_iter = i),
-    total_time = ttime,
-    evaluation_counts = environment(log_post_llh_interface)$evaluation_counts,
-    temps = temps,
-    log_post_llh_interface = if(save_post_interface){ log_post_llh_interface} else {NULL},
-    iter_summary = iter_summary,
-    particle_list = particle_list
-  ))
+  return(
+    list(
+      particles = curr_partl,
+      log_z = log_z,
+      eve_var_est = eve_var_est(curr_partl, log_z = log_z, num_iter = i),
+      total_time = ttime,
+      evaluation_counts = environment(log_post_llh_interface)$evaluation_counts,
+      temps = temps,
+      log_post_llh_interface = if(save_post_interface){ log_post_llh_interface} else {NULL},
+      iter_summary = iter_summary,
+      particle_list = particle_list,
+      max_anneal_temp = max_anneal_temp
+    )
+  )
 
 }
 
