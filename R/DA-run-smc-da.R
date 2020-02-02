@@ -139,19 +139,34 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
 
     if(use_da){
 
+      if(i == 1) intial_par_start <- par_start
+
       # pre-tranformation for approx likelihood
       if(i > 1 & !is.null(optimise_pre_approx_llhood_transformation) ){
 
         optim_time <- Sys.time()
-        approx_ll_tune_optim <- optimise_pre_approx_llhood_transformation(particles = curr_partl, loglike = log_post_llh_interface, D_approx_log_like = Dlog_like_approx_Dbeta, temp = tail(temps, 1), par_start = par_start * 0.5)
-        if( is.null(approx_ll_tune_optim) ) approx_ll_tune_optim <- list(par = par_start) # if error in optim
-        optim_time <- Sys.time() - optim_time
 
-        pre_trans <- function(x){ (x - approx_ll_tune_optim$par[1:5]) / exp(approx_ll_tune_optim$par[6:10]) }
+        approx_ll_tune_optim <- optimise_pre_approx_llhood_transformation(
+          particles = curr_partl,
+          loglike = log_post_llh_interface,
+          D_approx_log_like = Dlog_like_approx_Dbeta,
+          temp = tail(temps, 1),
+          par_start = par_start * 0.5)
+
+        if( is.null(approx_ll_tune_optim) ){
+          # if error in optim
+          approx_ll_tune_optim <- list(par = par_start * 0.5 + intial_par_start * 0.5, trans = identity)
+        }
+
+        optim_time <- Sys.time() - optim_time
+        pre_trans <- approx_ll_tune_optim$trans
         par_start <- approx_ll_tune_optim$par
+
       } else {
-        pre_trans <- identity
+
         optim_time <- NULL
+        pre_trans <- identity
+
       }
 
       mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_post_llh_interface, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans)
