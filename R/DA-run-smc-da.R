@@ -10,7 +10,6 @@
 #' @param log_prior Function for log-prior.
 #' @param log_like  Function for (full) log-likelihood.
 #' @param log_like_approx Function for approximate log-likelihood.
-#' @param Dlog_like_approx_Dbeta Derivative for approximate log-likelihood.
 #' @param draw_prior Function to draw random sample from prior.
 #' @param start_from_approx_fit SMC object (list) with approximate fit if start_from_approx is TRUE.
 #' @param optimise_pre_approx_llhood_transformation Function to optimise pre-transformation for approximate likelihood.
@@ -18,18 +17,19 @@
 #' @param max_anneal_temp Temperature to anneal likelihood (posterior) to. Max 1.
 #' @param save_post_interface Logical. Should the memoised interface to the likelihood functions be returned (very large).
 #' @param verbose Logical. Should the SMC iterations update be printed to console?
+#' @param ... Arguments to be passed to functions.
 #'
 #' @return A list
 #' @export
 #'
 run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from_approx = F, refresh_ejd_threshold, par_start,
-                       log_prior, log_like, log_like_approx, Dlog_like_approx_Dbeta, draw_prior,
+                       log_prior, log_like, log_like_approx, draw_prior,
                        start_from_approx_fit,
                        optimise_pre_approx_llhood_transformation,
                        find_best_step_scale,
                        max_anneal_temp = 1,
                        save_post_interface,
-                       verbose = F
+                       verbose = F, ...
 ){
 
   stopifnot(
@@ -49,6 +49,8 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
         log_like_approx = log_like_approx,
         log_prior = log_prior
       )
+
+    dots <- list(...)
 
     i <- 1
     ttime <- as.difftime(0, units = "secs") # total time
@@ -149,7 +151,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
         approx_ll_tune_optim <- optimise_pre_approx_llhood_transformation(
           particles = curr_partl,
           loglike = log_post_llh_interface,
-          D_approx_log_like = Dlog_like_approx_Dbeta,
+          D_approx_log_like = dots$Dlog_like_approx_Dbeta, #may not be used.
           temp = tail(temps, 1),
           par_start = par_start * 0.5)
 
