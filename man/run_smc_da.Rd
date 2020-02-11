@@ -15,14 +15,14 @@ run_smc_da(
   log_prior,
   log_like,
   log_like_approx,
-  Dlog_like_approx_Dbeta,
   draw_prior,
   start_from_approx_fit,
   optimise_pre_approx_llhood_transformation,
   find_best_step_scale,
   max_anneal_temp = 1,
   save_post_interface,
-  verbose = F
+  verbose = F,
+  ...
 )
 }
 \arguments{
@@ -46,8 +46,6 @@ run_smc_da(
 
 \item{log_like_approx}{Function for approximate log-likelihood.}
 
-\item{Dlog_like_approx_Dbeta}{Derivative for approximate log-likelihood.}
-
 \item{draw_prior}{Function to draw random sample from prior.}
 
 \item{start_from_approx_fit}{SMC object (list) with approximate fit if start_from_approx is TRUE.}
@@ -61,6 +59,8 @@ run_smc_da(
 \item{save_post_interface}{Logical. Should the memoised interface to the likelihood functions be returned (very large).}
 
 \item{verbose}{Logical. Should the SMC iterations update be printed to console?}
+
+\item{...}{Arguments to be passed to functions.}
 }
 \value{
 A list
