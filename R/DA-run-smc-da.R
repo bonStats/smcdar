@@ -40,6 +40,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
     max_anneal_temp > 0
   )
 
+  dots <- list(...)
 
   if( !start_from_approx ){
 
@@ -50,7 +51,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
         log_prior = log_prior
       )
 
-    dots <- list(...)
+
 
     i <- 1
     ttime <- as.difftime(0, units = "secs") # total time
