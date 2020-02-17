@@ -57,7 +57,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
     ttime <- as.difftime(0, units = "secs") # total time
     temps <- 0
 
-    curr_partl <- particles(beta = draw_prior(num_p))
+    curr_partl <- particles(draw_prior(num_p))
     log_z <- 0 # Z_1 = 1 due to annealing
 
   } else {

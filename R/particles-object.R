@@ -15,6 +15,10 @@ particles <- function(..., weights = 1){
 
   prt_list <- list(...)
 
+  if( length(prt_list) == 1 & is.list(prt_list[[1]]) ){
+    prt_list <- prt_list[[1]] # unpack list if needed
+  }
+
   stopifnot(!is.null(names(prt_list)))
 
   stopifnot( components_have_same_particle_number(prt_list) )
