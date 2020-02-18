@@ -5,16 +5,49 @@
 #' @param particles Particle object.
 #' @param fun Function to apply.
 #' @param comp_time Record time taken for comutation? Logical.
+#' @param cores  Use mutlicore to evaluate? Uses parallel package.
 #' @param ... Other arguments to pass to \code{fun}.
 #'
 #' @return Function evaluated at each row.
 #' @export
 #'
-papply <- function(particles, fun, comp_time = F, ...){
+papply <- function(particles, fun, comp_time = F, cores = 1L, ...){
+
+  if(cores == 1L){
+
+      res <- papply_1core(particles, fun = fun, comp_time = comp_time, ...)
+
+  } else {
+
+      grps <- allocate_to_cores(p_num = num_particles(particles), core_num = cores)
+      split_particles <- lapply(1:cores, FUN = function(i) subset(particles, subset = grps == i))
+      res_list <- parallel::mclapply(split_particles, FUN = papply_1core,
+                         fun = fun,
+                         ...,
+                         comp_time = comp_time,
+                         mc.cores = cores)
+      res <- c(res_list, recursive = T)
+
+      if(comp_time){
+        timing <- c(lapply(res_list, FUN = attr, which = "comptime"), recursive = T)
+        artiftiming <- c(lapply(res_list, FUN = attr, which = "artiftime"), recursive = T)
+        attr(res, "comptime") <- timing
+        attr(res, "artiftime") <- artiftiming
+      }
+
+    }
+
+  if(!is.null(dim(res))) warning("dim(res) != NULL: papply designed for functions that map each particle to a scalar.")
+
+  return(res)
+
+}
+
+papply_1core <- function(particles, fun, comp_time = F, ...){
 
   if(!comp_time){
 
-    apply(particles, MARGIN = 1, FUN = fun, ...)
+      res <- apply(particles, MARGIN = 1, FUN = fun, ...)
 
   } else {
 
@@ -36,37 +69,18 @@ papply <- function(particles, fun, comp_time = F, ...){
     attr(res, "comptime") <- timing
     attr(res, "artiftime") <- artiftiming
 
-    return(res)
   }
+
+  return(res)
 
 }
 
-#' papply2 <- function(particles, fun, comp_time = F, groups, ...){
-#'
-#'   if(!comp_time){
-#'
-#'     apply(particles, MARGIN = 1, FUN = fun, ...)
-#'
-#'   } else {
-#'
-#'     if(missing(groups)) groups <- rep(1, num_particles(particles))
-#'
-#'     res <- vector(mode = "list", length = num_particles(particles))
-#'     ugroups <- unique(groups)
-#'     timing <- stats::setNames(rep(NA_real_, length(ugroups)), ugroups)
-#'     len <- rep(NA_integer_, length(ugroups))
-#'
-#'     for(tgp in ugroups){
-#'       tic <- Sys.time()
-#'       res[tgp == groups] <- apply(particles[tgp == groups, , drop = F], MARGIN = 1, FUN = fun, ...)
-#'       len <- sum(tgp == groups)
-#'       toc <- Sys.time()
-#'       timing[tgp] <- toc - tic
-#'     }
-#'
-#'     res <- simplify2array(res)
-#'     attr(res, "comptime") <- timing / len
-#'     return(res)
-#'   }
-#'
-#' }
+allocate_to_cores <- function(p_num, core_num){
+
+  if( p_num <= core_num){
+    1:p_num
+  } else {
+    sort(rep(1:core_num, times = p_num %/% core_num + 1)[1:p_num])
+  }
+
+}

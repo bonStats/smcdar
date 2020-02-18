@@ -4,7 +4,7 @@
 \alias{papply}
 \title{Apply function to all particles}
 \usage{
-papply(particles, fun, comp_time = F, ...)
+papply(particles, fun, comp_time = F, cores = 1L, ...)
 }
 \arguments{
 \item{particles}{Particle object.}
@@ -12,6 +12,8 @@ papply(particles, fun, comp_time = F, ...)
 \item{fun}{Function to apply.}
 
 \item{comp_time}{Record time taken for comutation? Logical.}
+
+\item{cores}{Use mutlicore to evaluate? Uses parallel package.}
 
 \item{...}{Other arguments to pass to \code{fun}.}
 }
