@@ -13,7 +13,7 @@ papply(particles, fun, comp_time = F, cores = 1L, ...)
 
 \item{comp_time}{Record time taken for comutation? Logical.}
 
-\item{cores}{Use mutlicore to evaluate? Uses parallel package.}
+\item{cores}{Use multicore to evaluate? Uses parallel package.}
 
 \item{...}{Other arguments to pass to \code{fun}.}
 }
