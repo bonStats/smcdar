@@ -4,7 +4,12 @@
 \alias{log_likelihood_anneal_func_da}
 \title{Generic interface to annealed log-likeihood functions with memoisation: Likelihood annealing.}
 \usage{
-log_likelihood_anneal_func_da(log_likelihood, log_like_approx, log_prior)
+log_likelihood_anneal_func_da(
+  log_likelihood,
+  log_like_approx,
+  log_prior,
+  cores = 1L
+)
 }
 \arguments{
 \item{log_likelihood}{(Full) log-likelihood function.}
@@ -12,6 +17,8 @@ log_likelihood_anneal_func_da(log_likelihood, log_like_approx, log_prior)
 \item{log_like_approx}{Approximate log-likelihood function.}
 
 \item{log_prior}{Log-prior function.}
+
+\item{cores}{Cores to use.}
 }
 \value{
 Value of log-likelihood function.

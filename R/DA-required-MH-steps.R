@@ -85,6 +85,7 @@ time_steps_to_min_quantile_dist_normal <- function(dist, prob_accept, D, rho, ma
 time_steps_to_min_quantile_dist_gamma <- function(dist, prob_accept, D, rho, max_T = 10){
 
   expected_dist <- prob_accept * (dist^2)
+  expected_dist[expected_dist < 1e-10] <- 1e-10 # change zeros
 
   # use (small bias) mixed type log-moment estimators (some MLE implementations can fail with infinite spike at zero)
   N <- length(expected_dist)

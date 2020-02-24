@@ -15,7 +15,7 @@ mh_step(new_particles, old_particles, var, temp, loglike, type, time_on = T)
 
 \item{temp}{Current SMC temperature.}
 
-\item{loglike}{Generic log-likelihood interface.}
+\item{loglike}{Generic log-likelihood interface. Vectorised!}
 
 \item{type}{Which log-likelihood to use. approx or full}
 

@@ -13,6 +13,8 @@
 #'
 papply <- function(particles, fun, comp_time = F, cores = 1L, ...){
 
+  stopifnot(is.matrix(particles))
+
   if(cores == 1L){
 
       res <- papply_1core(particles, fun = fun, comp_time = comp_time, ...)

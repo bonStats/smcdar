@@ -6,7 +6,7 @@
 #' @param old_particles Locations for current/old particles.
 #' @param var Empirical variance for Mahalanobis distance calculation.
 #' @param temp Current SMC temperature.
-#' @param loglike Generic log-likelihood interface.
+#' @param loglike Generic log-likelihood interface. Vectorised!
 #' @param type Which log-likelihood to use. approx or full
 #' @param time_on Logical. Should computation time be recorded?
 #'
@@ -15,8 +15,8 @@
 mh_step <- function(new_particles, old_particles, var, temp, loglike, type, time_on = T){
   # using MVN (symmetric kernel)
 
-  new_loglike_type <- papply(new_particles, fun = loglike, temp = temp, type = type, comp_time = T & time_on)
-  old_loglike_type <- papply(old_particles, fun = loglike, temp = temp, type = type, comp_time = F)
+  new_loglike_type <- loglike(new_particles, temp = temp, type = type, comp_time = T & time_on)
+  old_loglike_type <- loglike(old_particles, temp = temp, type = type, comp_time = F)
 
   accept_ratio <- exp(
     new_loglike_type - old_loglike_type

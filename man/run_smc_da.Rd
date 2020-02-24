@@ -21,6 +21,7 @@ run_smc_da(
   find_best_step_scale,
   max_anneal_temp = 1,
   save_post_interface,
+  cores = 1L,
   verbose = F,
   ...
 )
@@ -57,6 +58,8 @@ run_smc_da(
 \item{max_anneal_temp}{Temperature to anneal likelihood (posterior) to. Max 1.}
 
 \item{save_post_interface}{Logical. Should the memoised interface to the likelihood functions be returned (very large).}
+
+\item{cores}{Number of cores.}
 
 \item{verbose}{Logical. Should the SMC iterations update be printed to console?}
 

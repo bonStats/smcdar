@@ -8,7 +8,7 @@
 #' @param old_particles Locations for current/old particles.
 #' @param var Empirical variance for Mahalanobis distance calculation.
 #' @param temp Current SMC temperature.
-#' @param loglike Generic log-likelihood interface.
+#' @param loglike Generic log-likelihood interface. Vectorised!
 #' @param pre_trans Pre-transformation for approximate log-likelihood.
 #' @param time_on Logical. Should computation time be recorded?
 #'
@@ -23,8 +23,8 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
   #trans_new_particles <- t(papply(new_particles, pre_trans))
   #trans_old_particles <- t(papply(old_particles, pre_trans))
 
-  approx_trans_post_new_particles <- papply(new_particles, fun = loglike, lh_trans = pre_trans, type = "approx_posterior", temp = temp, comp_time = T & time_on)
-  approx_trans_post_old_particles <- papply(old_particles, fun = loglike, lh_trans = pre_trans, type = "approx_posterior", temp = temp, comp_time = T & time_on)
+  approx_trans_post_new_particles <- loglike(new_particles, lh_trans = pre_trans, type = "approx_posterior", temp = temp, comp_time = T & time_on)
+  approx_trans_post_old_particles <- loglike(old_particles, lh_trans = pre_trans, type = "approx_posterior", temp = temp, comp_time = T & time_on)
 
   # approximate likelihood threshold (surrogate model)
   log_rho_tilde_1 <- approx_trans_post_new_particles - approx_trans_post_old_particles
@@ -36,10 +36,10 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
 
   accept_1 <- rho_1 > stats::runif(num_particles(new_particles))
 
-  full_post_new_particles <- papply(new_particles[accept_1,,drop = F], fun = loglike, type = "full_likelihood", temp = temp, comp_time = T & time_on)
-  full_post_old_particles <- papply(old_particles[accept_1,,drop = F], fun = loglike, type = "full_likelihood", temp = temp, comp_time = F) # should be memoised.
-  approx_trans_llh_new_particles <- papply(new_particles[accept_1,,drop = F], fun = loglike, lh_trans = pre_trans, type = "approx_likelihood", temp = temp, comp_time = T & time_on)
-  approx_trans_llh_old_particles <- papply(old_particles[accept_1,,drop = F], fun = loglike, lh_trans = pre_trans, type = "approx_likelihood", temp = temp, comp_time = T & time_on)
+  full_post_new_particles <- loglike(new_particles[accept_1,,drop = F], type = "full_likelihood", temp = temp, comp_time = T & time_on)
+  full_post_old_particles <- loglike(old_particles[accept_1,,drop = F],  type = "full_likelihood", temp = temp, comp_time = F) # should be memoised.
+  approx_trans_llh_new_particles <- loglike(new_particles[accept_1,,drop = F], lh_trans = pre_trans, type = "approx_likelihood", temp = temp, comp_time = T & time_on)
+  approx_trans_llh_old_particles <- loglike(old_particles[accept_1,,drop = F], lh_trans = pre_trans, type = "approx_likelihood", temp = temp, comp_time = T & time_on)
 
   log_rho_tilde_2 <-
     ( full_post_new_particles - full_post_old_particles ) -

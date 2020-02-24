@@ -23,7 +23,7 @@ mh_da_step_bglr(
 
 \item{temp}{Current SMC temperature.}
 
-\item{loglike}{Generic log-likelihood interface.}
+\item{loglike}{Generic log-likelihood interface. Vectorised!}
 
 \item{pre_trans}{Pre-transformation for approximate log-likelihood.}
 

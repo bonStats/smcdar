@@ -16,6 +16,7 @@
 #' @param find_best_step_scale Function to find best step scale.
 #' @param max_anneal_temp Temperature to anneal likelihood (posterior) to. Max 1.
 #' @param save_post_interface Logical. Should the memoised interface to the likelihood functions be returned (very large).
+#' @param cores Number of cores.
 #' @param verbose Logical. Should the SMC iterations update be printed to console?
 #' @param ... Arguments to be passed to functions.
 #'
@@ -29,6 +30,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
                        find_best_step_scale,
                        max_anneal_temp = 1,
                        save_post_interface,
+                       cores = 1L,
                        verbose = F, ...
 ){
 
@@ -48,10 +50,9 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
       log_likelihood_anneal_func_da(
         log_likelihood = log_like,
         log_like_approx = log_like_approx,
-        log_prior = log_prior
+        log_prior = log_prior,
+        cores = cores
       )
-
-
 
     i <- 1
     ttime <- as.difftime(0, units = "secs") # total time
@@ -86,12 +87,16 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
   while(tail(temps,1) < max_anneal_temp){
     stime <- Sys.time()
 
-    curr_log_post <- papply(curr_partl, fun = log_post_llh_interface, temp = tail(temps, 1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
+    curr_log_post <- log_post_llh_interface(
+      curr_partl,
+      temp = tail(temps, 1),
+      type = ifelse(use_approx, "approx_posterior", "full_posterior")
+      )
 
     ## new temp, update posterior
     # use ESS to find temp
     half_ess_temp_obj <- function(temp) {
-      log_post <- papply(curr_partl, fun = log_post_llh_interface, temp = temp, type = ifelse(use_approx, "approx_posterior", "full_posterior"))
+      log_post <- log_post_llh_interface(curr_partl, temp = temp, type = ifelse(use_approx, "approx_posterior", "full_posterior"))
       log_post <- replace(x = log_post, is.na(log_post), -Inf)
 
       partl_temp <- curr_partl
@@ -120,7 +125,11 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
 
     # new log posterior
     prev_log_post <- curr_log_post
-    curr_log_post <- papply(curr_partl, fun = log_post_llh_interface, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior") )
+    curr_log_post <- log_post_llh_interface(
+      curr_partl,
+      temp = tail(temps,1),
+      type = ifelse(use_approx, "approx_posterior", "full_posterior")
+      )
     curr_log_post <- replace(x = curr_log_post, is.na(curr_log_post), -Inf)
 
     # weight update
@@ -224,7 +233,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
 
     }
 
-    target_log_post <-  papply(curr_partl, fun = log_post_llh_interface, temp = 1, type = ifelse(use_approx, "approx_posterior", "full_posterior") )
+    target_log_post <- log_post_llh_interface(curr_partl, temp = 1, type = ifelse(use_approx, "approx_posterior", "full_posterior") )
 
     etime <- Sys.time()
 
