@@ -6,10 +6,13 @@
 #' @param log_like_approx Approximate log-likelihood function.
 #' @param log_prior Log-prior function.
 #' @param cores Cores to use.
+#' @param start_from_approx Is the intial distribution an approximate model?
+#' @param max_approx_anneal Maximum value of temperature reached during approximate anneal.
+#' @param count_start Likelihood evaluation count. List with integer elements "log_likelihood" and "log_like_approx".
 #'
 #' @return Value of log-likelihood function.
 #' @export
-log_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, log_prior, cores = 1L){
+log_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, log_prior, cores = 1L, start_from_approx = F, max_approx_anneal = 1, count_start = NULL){
 
   force(cores)
   force(log_likelihood)
@@ -45,8 +48,11 @@ log_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, log_p
   }
 
   unique_x <- NULL
-  evaluation_counts <- setNames( rep(list(0L),2), c("log_likelihood", "log_like_approx"))
-
+  if(is.null(count_start)){
+    evaluation_counts <- setNames( rep(list(0L),2), c("log_likelihood", "log_like_approx"))
+  } else {
+    evaluation_counts <- count_start
+  }
 
   f <- function(particles, temp = 1, lh_trans = identity, type = "full_posterior", comp_time = F, ...){
 
@@ -114,13 +120,48 @@ log_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, log_p
 
     }
 
-    vals <- switch(type,
-           approx_posterior = temp * log_like_approx_vals + log_prior_vals,
-           approx_likelihood = temp * log_like_approx_vals,
-           full_likelihood =  temp * log_like_vals,
-           full_posterior = temp * log_like_vals + log_prior_vals,
-           prior = log_prior_vals
+    if(!start_from_approx){
+
+      vals <- switch(type,
+             approx_posterior = temp * log_like_approx_vals + log_prior_vals,
+             approx_likelihood = temp * log_like_approx_vals,
+             full_likelihood =  temp * log_like_vals,
+             full_posterior = temp * log_like_vals + log_prior_vals,
+             prior = log_prior_vals
+        )
+    } else {
+
+      log_like_approx_vals_no_trans <- rep(NA_real_, times = num_particles(particles))
+      has_hash <- check_hash(x = particles, fun_name = "log_like_approx")
+
+      if(!all(has_hash)){
+
+        new_vals <- papply(particles = particles[!has_hash, , drop = F], fun = log_like_approx, comp_time = comp_time, cores = cores, ...)
+
+        add_hash(x = particles[!has_hash, , drop = F], values = new_vals, fun_name = "log_like_approx")
+        evaluation_counts$log_like_approx <<- evaluation_counts$log_like_approx +
+          sum(!has_hash)
+        log_like_approx_vals_no_trans[!has_hash] <- new_vals
+
+        if(comp_time){
+          agg_comptime[!has_hash] <- agg_comptime[!has_hash] + attr(new_vals,"comptime")
+          agg_artiftime[!has_hash] <- agg_artiftime[!has_hash] + attr(new_vals,"artiftime")
+        }
+      }
+
+      if(any(has_hash)){
+        cache_vals <- get_value(x = particles[has_hash, , drop = F], fun_name = "log_like_approx")
+        log_like_approx_vals_no_trans[has_hash] <- cache_vals
+      }
+
+      vals <- switch(type,
+                    approx_posterior = temp * log_like_approx_vals + ( 1 - temp ) * max_approx_anneal * log_like_approx_vals_no_trans + log_prior_vals,
+                    approx_likelihood = temp * log_like_approx_vals,
+                    full_likelihood =  temp * log_like_vals,
+                    full_posterior = temp * log_like_vals + ( 1 - temp ) * max_approx_anneal * log_like_approx_vals_no_trans + log_prior_vals,
+                    prior =  log_prior_vals
       )
+    }
 
     if(comp_time){
       attr(vals, "comptime") <- agg_comptime

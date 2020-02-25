@@ -64,11 +64,14 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
   } else {
 
     log_post_llh_interface <-
-      log_approx_likelihood_anneal_func_da(
+      log_likelihood_anneal_func_da(
         log_likelihood = log_like,
         log_like_approx = log_like_approx,
         log_prior = log_prior,
-        max_approx_anneal = start_from_approx_fit$max_anneal_temp
+        max_approx_anneal = start_from_approx_fit$max_anneal_temp,
+        cores = cores,
+        start_from_approx = TRUE,
+        count_start = start_from_approx_fit$evaluation_counts
       )
 
     i <- 1
@@ -77,7 +80,6 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
 
     curr_partl <- start_from_approx_fit$particles
     log_z <- start_from_approx_fit$log_z
-    environment(log_post_llh_interface)$evaluation_counts <- start_from_approx_fit$evaluation_counts
 
   }
 

@@ -8,7 +8,10 @@ log_likelihood_anneal_func_da(
   log_likelihood,
   log_like_approx,
   log_prior,
-  cores = 1L
+  cores = 1L,
+  start_from_approx = F,
+  max_approx_anneal = 1,
+  count_start = NULL
 )
 }
 \arguments{
@@ -19,6 +22,12 @@ log_likelihood_anneal_func_da(
 \item{log_prior}{Log-prior function.}
 
 \item{cores}{Cores to use.}
+
+\item{start_from_approx}{Is the intial distribution an approximate model?}
+
+\item{max_approx_anneal}{Maximum value of temperature reached during approximate anneal.}
+
+\item{count_start}{Likelihood evaluation count. List with integer elements "log_likelihood" and "log_like_approx".}
 }
 \value{
 Value of log-likelihood function.
