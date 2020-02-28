@@ -28,6 +28,11 @@ papply <- function(particles, fun, comp_time = F, cores = 1L, ...){
                          ...,
                          comp_time = comp_time,
                          mc.cores = cores)
+
+      are_errors <- sapply(res_list, class) == "try-error"
+
+      if(any(are_errors)) stop("\n",sapply(res_list[are_errors], print))
+
       res <- c(res_list, recursive = T)
 
       if(comp_time){

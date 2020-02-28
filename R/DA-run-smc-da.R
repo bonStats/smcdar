@@ -139,7 +139,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
 
     log_z <- log_z + log(sum(weights(curr_partl, log = F, normalise = F)))
 
-    mvn_var <- stats::cov.wt(curr_partl, wt =  weights(curr_partl, normalise = F), method = "unbiased")
+    mvn_var <- stats::cov.wt(curr_partl, wt =  weights(curr_partl, normalise = T), method = "unbiased")
 
     ## resample (index also returned, to see duplicates.)
     rs_obj <- resample_stratified(curr_partl, num_strata = 10)
