@@ -6,18 +6,20 @@
 #' @param fun Function to apply.
 #' @param comp_time Record time taken for comutation? Logical.
 #' @param cores  Use multicore to evaluate? Uses parallel package.
+#' @param weights Weights to sum output from \code{fun}, if applicable, i.e. if output is a vector.
+#' @param save_comps Save components from output of \code{fun}, if applicable, i.e. if output is a vector.
 #' @param ... Other arguments to pass to \code{fun}.
 #'
 #' @return Function evaluated at each row.
 #' @export
 #'
-papply <- function(particles, fun, comp_time = F, cores = 1L, ...){
+papply <- function(particles, fun, comp_time = F, cores = 1L, weights = NULL, save_comps = !is.null(weights), ...){
 
   stopifnot(is.matrix(particles))
 
   if(cores == 1L){
 
-      res <- papply_1core(particles, fun = fun, comp_time = comp_time, ...)
+      res <- papply_1core(particles, fun = fun, comp_time = comp_time, weights = weights, save_comps = save_comps, ...)
 
   } else {
 
@@ -27,6 +29,8 @@ papply <- function(particles, fun, comp_time = F, cores = 1L, ...){
                          fun = fun,
                          ...,
                          comp_time = comp_time,
+                         weights = weights,
+                         save_comps = save_comps,
                          mc.cores = cores)
 
       are_errors <- sapply(res_list, class) == "try-error"
@@ -36,10 +40,12 @@ papply <- function(particles, fun, comp_time = F, cores = 1L, ...){
       res <- c(res_list, recursive = T)
 
       if(comp_time){
-        timing <- c(lapply(res_list, FUN = attr, which = "comptime"), recursive = T)
-        artiftiming <- c(lapply(res_list, FUN = attr, which = "artiftime"), recursive = T)
-        attr(res, "comptime") <- timing
-        attr(res, "artiftime") <- artiftiming
+        attr(res, "comptime") <- c(lapply(res_list, FUN = attr, which = "comptime"), recursive = T)
+        attr(res, "artiftime") <- c(lapply(res_list, FUN = attr, which = "artiftime"), recursive = T)
+      }
+
+      if(save_comps){
+        attr(res, "components") <- cbind(lapply(res_list, FUN = attr, which = "components"))
       }
 
     }
@@ -50,7 +56,7 @@ papply <- function(particles, fun, comp_time = F, cores = 1L, ...){
 
 }
 
-papply_1core <- function(particles, fun, comp_time = F, weights = NULL, ...){
+papply_1core <- function(particles, fun, comp_time = F, weights = NULL, save_comps = !is.null(weights), ...){
 
   res_comps <- NULL
 
@@ -97,7 +103,7 @@ papply_1core <- function(particles, fun, comp_time = F, weights = NULL, ...){
 
   if(!is.null(weights) & is.null(dim(res_comps))) warning("Weights not applied, fun returns scalar value.")
 
-  attr(res, "components") <- res_comps
+  if(save_comps) attr(res, "components") <- res_comps
 
   return(res)
 
