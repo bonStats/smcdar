@@ -50,26 +50,43 @@ papply <- function(particles, fun, comp_time = F, cores = 1L, ...){
 
 }
 
-papply_1core <- function(particles, fun, comp_time = F, ...){
+papply_1core <- function(particles, fun, comp_time = F, weights = NULL, ...){
+
+  res_comps <- NULL
 
   if(!comp_time){
 
       res <- apply(particles, MARGIN = 1, FUN = fun, ...)
+
+      if(!is.null(weights) & !is.null(dim(res))){
+        res_comps <- res
+        res <- as.vector(weights %*% res)
+      }
 
   } else {
 
     fun_time <- function(x, ...){
       tic <- Sys.time()
       res <- fun(x, ...)
+      if(!is.null(weights) & length(res) > 1){
+        res_comps <- res
+        res <- as.vector(weights %*% res)
+      }
       toc <- Sys.time()
       art <- ifelse(is.null(attr(res, "comptime")), 0, attr(res, "comptime"))
       tim <- toc - tic + art
-      list(res = res, time = tim, artifical_time = art)
+      list(res = res, res_comps = res_comps, time = tim, artifical_time = art)
     }
 
     res_list <- apply(particles, MARGIN = 1, FUN = fun_time, ...)
 
     res <- simplify2array(lapply(res_list, getElement, name = "res"))
+    res_comps <- lapply(res_list, getElement, name = "res_comps")
+    if( all(sapply(res_comps, is.null)) ){
+      res_comps <- NULL
+    } else {
+      res_comps <- simplify2array(res_comps)
+    }
     timing <- sapply(res_list, getElement, name = "time")
     artiftiming <- sapply(res_list, getElement, name = "artifical_time")
 
@@ -77,6 +94,10 @@ papply_1core <- function(particles, fun, comp_time = F, ...){
     attr(res, "artiftime") <- artiftiming
 
   }
+
+  if(!is.null(weights) & is.null(dim(res_comps))) warning("Weights not applied, fun returns scalar value.")
+
+  attr(res, "components") <- res_comps
 
   return(res)
 

@@ -1,6 +1,7 @@
 #' Generic interface to annealed log-likeihood functions with memoisation: Likelihood annealing.
 #'
-#' Prior -> Posterior
+#' Prior -> Posterior or
+#' Approx posterior -> Posterior
 #'
 #' @param log_likelihood (Full) log-likelihood function.
 #' @param log_like_approx Approximate log-likelihood function.
@@ -114,7 +115,7 @@ log_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, log_p
 
     }
 
-    if(type %in% c("full_posterior","approx_posterior")){
+    if(type %in% c("full_posterior","approx_posterior") ){
 
       log_prior_vals <- papply(particles, fun = log_prior, cores = 1L, ...)
 
@@ -177,6 +178,8 @@ log_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, log_p
 }
 
 #' Generic interface to annealed log-likeihood functions with memoisation: Approximate likelihood annealing.
+#'
+#' NOT IN USE: Delete after confirmation.
 #'
 #' Approximate posterior -> Full posterior
 #'
