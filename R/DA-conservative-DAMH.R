@@ -11,10 +11,11 @@
 #' @param loglike Generic log-likelihood interface. Vectorised!
 #' @param pre_trans Pre-transformation for approximate log-likelihood.
 #' @param time_on Logical. Should computation time be recorded?
+#' @param approx_ll_weights Weights for approximate likelihood.
 #'
 #' @return List.
 #' @export
-mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pre_trans = identity, time_on = T){
+mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pre_trans = identity, time_on = T, approx_ll_weights = NULL){
 
   c_const <- 0.01 # how to choose?
   d_const <- 2
@@ -23,8 +24,8 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
   #trans_new_particles <- t(papply(new_particles, pre_trans))
   #trans_old_particles <- t(papply(old_particles, pre_trans))
 
-  approx_trans_post_new_particles <- loglike(new_particles, lh_trans = pre_trans, type = "approx_posterior", temp = temp, comp_time = T & time_on)
-  approx_trans_post_old_particles <- loglike(old_particles, lh_trans = pre_trans, type = "approx_posterior", temp = temp, comp_time = T & time_on)
+  approx_trans_post_new_particles <- loglike(new_particles, lh_trans = pre_trans, type = "approx_posterior", temp = temp, comp_time = T & time_on, weights = approx_ll_weights)
+  approx_trans_post_old_particles <- loglike(old_particles, lh_trans = pre_trans, type = "approx_posterior", temp = temp, comp_time = T & time_on, weights = approx_ll_weights)
 
   # approximate likelihood threshold (surrogate model)
   log_rho_tilde_1 <- approx_trans_post_new_particles - approx_trans_post_old_particles
@@ -38,8 +39,8 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
 
   full_post_new_particles <- loglike(new_particles[accept_1,,drop = F], type = "full_likelihood", temp = temp, comp_time = T & time_on)
   full_post_old_particles <- loglike(old_particles[accept_1,,drop = F],  type = "full_likelihood", temp = temp, comp_time = F) # should be memoised.
-  approx_trans_llh_new_particles <- loglike(new_particles[accept_1,,drop = F], lh_trans = pre_trans, type = "approx_likelihood", temp = temp, comp_time = T & time_on)
-  approx_trans_llh_old_particles <- loglike(old_particles[accept_1,,drop = F], lh_trans = pre_trans, type = "approx_likelihood", temp = temp, comp_time = T & time_on)
+  approx_trans_llh_new_particles <- loglike(new_particles[accept_1,,drop = F], lh_trans = pre_trans, type = "approx_likelihood", temp = temp, comp_time = T & time_on, weights = approx_ll_weights)
+  approx_trans_llh_old_particles <- loglike(old_particles[accept_1,,drop = F], lh_trans = pre_trans, type = "approx_likelihood", temp = temp, comp_time = T & time_on, weights = approx_ll_weights)
 
   log_rho_tilde_2 <-
     ( full_post_new_particles - full_post_old_particles ) -

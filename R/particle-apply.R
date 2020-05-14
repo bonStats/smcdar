@@ -19,36 +19,39 @@ papply <- function(particles, fun, comp_time = F, cores = 1L, weights = NULL, sa
 
   if(cores == 1L){
 
-      res <- papply_1core(particles, fun = fun, comp_time = comp_time, weights = weights, save_comps = save_comps, ...)
+    res <- papply_1core(particles, fun = fun, comp_time = comp_time, weights = weights, save_comps = save_comps, ...)
 
   } else {
 
-      grps <- allocate_to_cores(p_num = num_particles(particles), core_num = cores)
-      split_particles <- lapply(1:cores, FUN = function(i) subset(particles, subset = grps == i))
-      res_list <- parallel::mclapply(split_particles, FUN = papply_1core,
-                         fun = fun,
-                         ...,
-                         comp_time = comp_time,
-                         weights = weights,
-                         save_comps = save_comps,
-                         mc.cores = cores)
+    grps <- allocate_to_cores(p_num = num_particles(particles), core_num = cores)
+    split_particles <- lapply(1:cores, FUN = function(i) subset(particles, subset = grps == i))
+    res_list <- parallel::mclapply(split_particles, FUN = papply_1core,
+                                   fun = fun,
+                                   ...,
+                                   comp_time = comp_time,
+                                   weights = weights,
+                                   save_comps = save_comps,
+                                   mc.cores = cores)
 
-      are_errors <- sapply(res_list, class) == "try-error"
+    are_errors <- sapply(res_list, class) == "try-error"
 
-      if(any(are_errors)) stop("\n",sapply(res_list[are_errors], print))
+    if(any(are_errors)) stop("\n",sapply(res_list[are_errors], print))
 
-      res <- c(res_list, recursive = T)
+    if(is.null(weights) & is.matrix(attr(res_list[[1]], "components")) ) warning("fun output has length > 1 and no weights supplied")
 
-      if(comp_time){
-        attr(res, "comptime") <- c(lapply(res_list, FUN = attr, which = "comptime"), recursive = T)
-        attr(res, "artiftime") <- c(lapply(res_list, FUN = attr, which = "artiftime"), recursive = T)
-      }
+    if(is.matrix(res_list[[1]])) res <- do.call(rbind, res_list)
+    else res <- c(res_list, recursive = T)
 
-      if(save_comps){
-        attr(res, "components") <- cbind(lapply(res_list, FUN = attr, which = "components"))
-      }
-
+    if(comp_time){
+      attr(res, "comptime") <- c(lapply(res_list, FUN = attr, which = "comptime"), recursive = T)
+      attr(res, "artiftime") <- c(lapply(res_list, FUN = attr, which = "artiftime"), recursive = T)
     }
+
+    if(save_comps){
+      attr(res, "components") <- do.call(rbind, lapply(res_list, FUN = attr, which = "components"))
+    }
+
+  }
 
   if(!is.null(dim(res))) warning("dim(res) != NULL: papply designed for functions that map each particle to a scalar.")
 
@@ -59,24 +62,29 @@ papply <- function(particles, fun, comp_time = F, cores = 1L, weights = NULL, sa
 papply_1core <- function(particles, fun, comp_time = F, weights = NULL, save_comps = !is.null(weights), ...){
 
   res_comps <- NULL
+  sum_comps <- F
+  if(length(weights) == 1) sum_comps <- T
 
   if(!comp_time){
 
-      res <- apply(particles, MARGIN = 1, FUN = fun, ...)
+    res <- apply(particles, MARGIN = 1, FUN = fun, ...)
+    res_comps <- res
 
-      if(!is.null(weights) & !is.null(dim(res))){
-        res_comps <- res
-        res <- as.vector(weights %*% res)
-      }
+    if(!is.null(weights) & is.matrix(res_comps)){
+      cat(dim(res_comps))
+      if(sum_comps) res <- weights * colSums(res_comps)
+      else res <- as.vector(weights %*% res_comps)
+    }
 
   } else {
 
     fun_time <- function(x, ...){
       tic <- Sys.time()
       res <- fun(x, ...)
+      res_comps <- res
       if(!is.null(weights) & length(res) > 1){
-        res_comps <- res
-        res <- as.vector(weights %*% res)
+        if(sum_comps) res <- weights * sum(res)
+        else res <- as.vector(weights %*% res)
       }
       toc <- Sys.time()
       art <- ifelse(is.null(attr(res, "comptime")), 0, attr(res, "comptime"))
@@ -101,10 +109,11 @@ papply_1core <- function(particles, fun, comp_time = F, weights = NULL, save_com
 
   }
 
-  if(!is.null(weights) & is.null(dim(res_comps))) warning("Weights not applied, fun returns scalar value.")
+  if(!is.null(weights) & !is.matrix(res_comps)) warning("Weights not applied, fun returns scalar value.")
 
-  if(save_comps) attr(res, "components") <- res_comps
-
+  # aligns with dimensions of particles
+  if(is.matrix(res)) res <- t(res)
+  if(save_comps) attr(res, "components") <- t(res_comps)
   return(res)
 
 }
