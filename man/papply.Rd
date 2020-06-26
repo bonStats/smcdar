@@ -4,7 +4,15 @@
 \alias{papply}
 \title{Apply function to all particles}
 \usage{
-papply(particles, fun, comp_time = F, cores = 1L, ...)
+papply(
+  particles,
+  fun,
+  comp_time = F,
+  cores = 1L,
+  weights = NULL,
+  save_comps = !is.null(weights),
+  ...
+)
 }
 \arguments{
 \item{particles}{Particle object.}
@@ -14,6 +22,10 @@ papply(particles, fun, comp_time = F, cores = 1L, ...)
 \item{comp_time}{Record time taken for comutation? Logical.}
 
 \item{cores}{Use multicore to evaluate? Uses parallel package.}
+
+\item{weights}{Weights to sum output from \code{fun}, if applicable, i.e. if output is a vector.}
+
+\item{save_comps}{Save components from output of \code{fun}, if applicable, i.e. if output is a vector.}
 
 \item{...}{Other arguments to pass to \code{fun}.}
 }

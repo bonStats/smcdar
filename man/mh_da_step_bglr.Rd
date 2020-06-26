@@ -11,7 +11,8 @@ mh_da_step_bglr(
   temp,
   loglike,
   pre_trans = identity,
-  time_on = T
+  time_on = T,
+  approx_ll_weights = NULL
 )
 }
 \arguments{
@@ -28,6 +29,8 @@ mh_da_step_bglr(
 \item{pre_trans}{Pre-transformation for approximate log-likelihood.}
 
 \item{time_on}{Logical. Should computation time be recorded?}
+
+\item{approx_ll_weights}{Weights for approximate likelihood.}
 }
 \value{
 List.

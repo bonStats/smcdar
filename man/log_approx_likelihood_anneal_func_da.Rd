@@ -24,5 +24,8 @@ log_approx_likelihood_anneal_func_da(
 Value of log-likelihood function.
 }
 \description{
+NOT IN USE: Delete after confirmation.
+}
+\details{
 Approximate posterior -> Full posterior
 }
