@@ -17,6 +17,7 @@
 #' @param optimise_approx_llhood_weights Function to optimise weights of approximate log-likelihood.
 #' @param find_best_step_scale Function to find best step scale.
 #' @param max_anneal_temp Temperature to anneal likelihood (posterior) to. Max 1.
+#' @param use_robust_cov Should the covariance be calculated by \code{robust_mean_cov}. Defaults to \code{FALSE} or equivalently \code{cov.wt}.
 #' @param save_post_interface Logical. Should the memoised interface to the likelihood functions be returned (very large).
 #' @param cores Number of cores.
 #' @param verbose Logical. Should the SMC iterations update be printed to console?
@@ -31,6 +32,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
                        optimise_pre_approx_llhood_transformation, optimise_approx_llhood_weights,
                        find_best_step_scale,
                        max_anneal_temp = 1,
+                       use_robust_cov = F,
                        save_post_interface,
                        cores = 1L,
                        verbose = F, ...
@@ -143,7 +145,11 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
 
     log_z <- log_z + log(sum(weights(curr_partl, log = F, normalise = F)))
 
-    mvn_var <- stats::cov.wt(curr_partl, wt =  weights(curr_partl, normalise = T), method = "unbiased")
+    if(use_robust_cov){
+      mvn_var <- robust_mean_cov(curr_partl, wt =  weights(curr_partl, normalise = T), method = "unbiased")
+    } else {
+      mvn_var <- stats::cov.wt(curr_partl, wt =  weights(curr_partl, normalise = T), method = "unbiased")
+    }
 
     ## resample (index also returned, to see duplicates.)
     rs_obj <- resample_stratified(curr_partl, num_strata = 10)
