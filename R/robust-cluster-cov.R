@@ -26,12 +26,6 @@ robust_mean_cov <- function(X, ncluster, ...){
   opt_kmeans <- kmeans(X, centers = ncluster)
   X_centered <- X - opt_kmeans$centers[opt_kmeans$cluster,]
 
-  cv <- cov.wt(X_centered, ...)
-
-  if(exists("cor", where =  cv)){
-    return(cv$cor)
-  } else {
-    return(cv$cov)
-  }
+  cov.wt(X_centered, ...)
 
 }
