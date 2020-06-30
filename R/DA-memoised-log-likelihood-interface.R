@@ -96,7 +96,7 @@ log_likelihood_anneal_func_da <- function(log_likelihood, log_like_approx, cwise
 
       if(!all(has_hash)){
 
-        new_vals_app <- papply(particles = trans_x[!has_hash, , drop = F], fun = log_like_approx, comp_time = comp_time, cores = cores, weights = 1, save_comps = F, ...)
+        new_vals_app <- papply(particles = trans_x[!has_hash, , drop = F], fun = log_like_approx, comp_time = comp_time, cores = cores, weights = weights, save_comps = F, ...)
 
         add_hash(x = trans_x[!has_hash, , drop = F], values = new_vals_app, fun_name = "log_like_approx")
         evaluation_counts$log_like_approx <<- evaluation_counts$log_like_approx +
