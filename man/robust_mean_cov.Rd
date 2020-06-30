@@ -4,12 +4,12 @@
 \alias{robust_mean_cov}
 \title{Robust covariance and correlation estimation from matrix}
 \usage{
-robust_mean_cov(X, ncluster, ...)
+robust_mean_cov(X, max_ncluster = 5, ...)
 }
 \arguments{
 \item{X}{A matrix, rows are observations.}
 
-\item{ncluster}{Number of clusters to use. If missing \code{ClusterR::Optimal_Clusters_KMeans} is used.}
+\item{max_ncluster}{Max number of clusters to consider.}
 
 \item{...}{Settings for \code{stats::cov.wt}.}
 }
@@ -18,5 +18,5 @@ Covariance or correlation matrix.
 }
 \description{
 Uses a clustering algorithm to estimate means, then estimate the covariance or correlation matrix.
-Better for multimodal distributions.
+Better for multimodal distributions. Uses \code{fpc::kmeansruns} to determine number of clusters.
 }

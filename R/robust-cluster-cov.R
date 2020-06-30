@@ -1,31 +1,23 @@
 #' Robust covariance and correlation estimation from matrix
 #'
 #' Uses a clustering algorithm to estimate means, then estimate the covariance or correlation matrix.
-#' Better for multimodal distributions.
+#' Better for multimodal distributions. Uses \code{fpc::kmeansruns} to determine number of clusters.
 #'
 #' @param X A matrix, rows are observations.
-#' @param ncluster Number of clusters to use. If missing \code{ClusterR::Optimal_Clusters_KMeans} is used.
+#' @param max_ncluster Max number of clusters to consider.
 #' @param ... Settings for \code{stats::cov.wt}.
 #'
 #' @return Covariance or correlation matrix.
 #' @export
 #'
-robust_mean_cov <- function(X, ncluster, ...){
+robust_mean_cov <- function(X, max_ncluster = 5, ...){
 
-  if(missing(ncluster)){
-    opt_cluster <- ClusterR::Optimal_Clusters_KMeans(
-      X,
-      max_clusters = 5,
-      criterion = "BIC",
-      num_init = 10,
-      plot_clusters = F)
+  opt_cluster <- fpc::kmeansruns(data = X, krange = 1:max_ncluster, criterion = "ch")
 
-    ncluster <- which.min(opt_cluster)
+  if(opt_cluster$bestk > 1){
+    X <- X - opt_cluster$centers[opt_cluster$cluster,]
   }
 
-  opt_kmeans <- kmeans(X, centers = ncluster)
-  X_centered <- X - opt_kmeans$centers[opt_kmeans$cluster,]
-
-  cov.wt(X_centered, ...)
+  c(cov.wt(X, ...), nclusters = opt_cluster$bestk)
 
 }

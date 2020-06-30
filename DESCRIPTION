@@ -21,6 +21,7 @@ Imports:
     purrr,
     methods,
     deSolve,
-    memoise
+    memoise,
+    fpc
 LinkingTo: 
     Rcpp
