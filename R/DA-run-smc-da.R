@@ -209,7 +209,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
 
       }
 
-      mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_post_llh_interface, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans, approx_ll_weights = approx_ll_weights)
+      mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_post_llh_interface, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans, approx_ll_weights = approx_ll_weights, mvn_step_scale = sample_step_scale)
 
     } else {
       mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_post_llh_interface, var = mvn_var$cov, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
@@ -222,10 +222,14 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
     # update particles for 1 iteration
     curr_partl <- replace_particles(new_particles = proposed_partl, old_particles = resampled_partl, index = mh_res$accept)
 
+    # distance threshold start
+    expected_sq_dist <- if(use_da) {mh_res$est_expected_dist^2} else {mh_res$expected_dist^2}
+
     # optimise mh step
     # best_step_scale <- find_best_step_scale(step_scale = sample_step_scale, dist = mh_res$dist, comptime = mh_res$comp_time)
     best_ss <- find_best_step_scale(eta = sample_step_scale,
                                     dist = mh_res$proposal_dist,
+                                    adjust_D = stats::median(expected_sq_dist),
                                     prob_accept = if(use_da) {mh_res$est_prob_accept} else {mh_res$prob_accept},
                                     surrogate_expected_acceptance = mh_res$expected_pre_accept,
                                     surrogate_cost = mh_res$avg_surr_like_cost,
@@ -235,9 +239,6 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
     accept_prop <- mean(mh_res$accept)
     pre_accept_prop <- mean(mh_res$pre_accept)
 
-    # distance threshold
-    expected_sq_dist <- if(use_da) {mh_res$est_expected_dist^2} else {mh_res$expected_dist^2}
-
     mh_step_count <- 1
 
     # update additional times with best_step_scale
@@ -246,7 +247,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
       proposed_partl <- mvn_jitter(particles = curr_partl, step_scale = best_ss$step_scale, var = mvn_var$cov)
       #mh_res <- mh_func(new_particles = proposed_partl, old_particles = curr_partl, var = mvn_var$cov, temp = tail(temps,1) )
       if(use_da){
-        mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_post_llh_interface, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans, time_on = T, approx_ll_weights = approx_ll_weights)
+        mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_post_llh_interface, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans, time_on = T, approx_ll_weights = approx_ll_weights, reg_warnings = F)
       } else {
         mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_post_llh_interface, var = mvn_var$cov, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"), time_on = T)
       }
