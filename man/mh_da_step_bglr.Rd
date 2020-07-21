@@ -11,7 +11,10 @@ mh_da_step_bglr(
   temp,
   loglike,
   pre_trans = identity,
-  time_on = T
+  time_on = T,
+  approx_ll_weights = NULL,
+  mvn_step_scale = NULL,
+  reg_warnings = T
 )
 }
 \arguments{
@@ -28,6 +31,12 @@ mh_da_step_bglr(
 \item{pre_trans}{Pre-transformation for approximate log-likelihood.}
 
 \item{time_on}{Logical. Should computation time be recorded?}
+
+\item{approx_ll_weights}{Weights for approximate likelihood.}
+
+\item{mvn_step_scale}{Step scale used for to generate each proposed particle.}
+
+\item{reg_warnings}{Print regression warnings.}
 }
 \value{
 List.

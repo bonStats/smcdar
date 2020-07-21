@@ -8,7 +8,7 @@ Description: Implements delayed acceptance SMC based on work from C. Drovandi an
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.0.0
+RoxygenNote: 7.1.0
 Suggests: 
     testthat
 Imports: 
@@ -21,6 +21,7 @@ Imports:
     purrr,
     methods,
     deSolve,
-    memoise
+    memoise,
+    fpc
 LinkingTo: 
     Rcpp

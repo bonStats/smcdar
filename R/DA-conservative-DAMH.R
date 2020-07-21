@@ -12,10 +12,12 @@
 #' @param pre_trans Pre-transformation for approximate log-likelihood.
 #' @param time_on Logical. Should computation time be recorded?
 #' @param approx_ll_weights Weights for approximate likelihood.
+#' @param mvn_step_scale Step scale used for to generate each proposed particle.
+#' @param reg_warnings Print regression warnings.
 #'
 #' @return List.
 #' @export
-mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pre_trans = identity, time_on = T, approx_ll_weights = NULL){
+mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pre_trans = identity, time_on = T, approx_ll_weights = NULL, mvn_step_scale = NULL, reg_warnings = T){
 
   c_const <- 0.01 # how to choose?
   d_const <- 2
@@ -60,17 +62,38 @@ mh_da_step_bglr <- function(new_particles, old_particles, var, temp, loglike, pr
   est_true_log_mh <- rep(NA_real_, length = length(accept))
   est_true_log_mh[accept_1] <- full_post_new_particles - full_post_old_particles
 
+  # estimate second stage acceptance probability:
+  if(is.null(mvn_step_scale)){
   # linear reg:
-  log_mh <- data.frame(true_mh = est_true_log_mh[accept_1],
-                   surr_mh = log_rho_tilde_1[accept_1])
-  est_ts_md <- stats::lm(true_mh ~ surr_mh, data = log_mh)
+    log_mh <- data.frame(true_mh = est_true_log_mh[accept_1],
+                     surr_mh = log_rho_tilde_1[accept_1])
 
-  est_true_log_mh[!accept_1] <- predict(est_ts_md, data.frame(surr_mh = log_rho_tilde_1[!accept_1]))
+    est_ts_md <- stats::lm(true_mh ~ surr_mh, data = log_mh)
 
+    est_true_log_mh[!accept_1] <- predict(est_ts_md, data.frame(surr_mh = log_rho_tilde_1[!accept_1]))
+
+    if(reg_warnings & coef(est_ts_md)["surr_mh"] < 0) warning("Negative slope for surrogate versus full acceptance ratio: May indicate bad surrogate or too few first stage acceptances.")
+
+  } else {
+    log_mh <- data.frame(true_mh = est_true_log_mh[accept_1],
+                         surr_mh = log_rho_tilde_1[accept_1],
+                         eta = mvn_step_scale[accept_1])
+
+    est_ts_md <- stats::lm(true_mh ~ surr_mh + eta, data = log_mh)
+
+    if(reg_warnings & coef(est_ts_md)["surr_mh"] < 0){
+      warning("Negative slope for surrogate versus full acceptance ratio: May indicate bad surrogate or too few first stage acceptances.")
+      est_ts_md <- stats::lm(true_mh ~ eta, data = log_mh)
+    }
+
+    if(reg_warnings & coef(est_ts_md)["eta"] > 0) warning("Positive slope for step scale versus full acceptance ratio: May indicate bad surrogate or too few first stage acceptances.")
+
+    est_true_log_mh[!accept_1] <- predict(est_ts_md, data.frame(surr_mh = log_rho_tilde_1[!accept_1], eta = mvn_step_scale[!accept_1]))
+
+  }
 
   expected_pre_accept <- pmin(rho_1, 1)
   est_prob_accept <- pmin(exp(est_true_log_mh), 1)
-
 
   if(time_on){
 

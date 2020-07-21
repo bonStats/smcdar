@@ -7,6 +7,7 @@
 log_likelihood_anneal_func_da(
   log_likelihood,
   log_like_approx,
+  cwise_log_like_approx,
   log_prior,
   cores = 1L,
   start_from_approx = F,
@@ -18,6 +19,8 @@ log_likelihood_anneal_func_da(
 \item{log_likelihood}{(Full) log-likelihood function.}
 
 \item{log_like_approx}{Approximate log-likelihood function.}
+
+\item{cwise_log_like_approx}{Approximate log-likelihood function.}
 
 \item{log_prior}{Log-prior function.}
 
@@ -33,5 +36,6 @@ log_likelihood_anneal_func_da(
 Value of log-likelihood function.
 }
 \description{
-Prior -> Posterior
+Prior -> Posterior or
+Approx posterior -> Posterior
 }

@@ -15,11 +15,14 @@ run_smc_da(
   log_prior,
   log_like,
   log_like_approx,
+  log_like_approx_comps = NULL,
   draw_prior,
   start_from_approx_fit,
   optimise_pre_approx_llhood_transformation,
+  optimise_approx_llhood_weights,
   find_best_step_scale,
   max_anneal_temp = 1,
+  use_robust_cov = F,
   save_post_interface,
   cores = 1L,
   verbose = F,
@@ -47,15 +50,21 @@ run_smc_da(
 
 \item{log_like_approx}{Function for approximate log-likelihood.}
 
+\item{log_like_approx_comps}{Function for approximate log-likelihood that returns components.}
+
 \item{draw_prior}{Function to draw random sample from prior.}
 
 \item{start_from_approx_fit}{SMC object (list) with approximate fit if start_from_approx is TRUE.}
 
 \item{optimise_pre_approx_llhood_transformation}{Function to optimise pre-transformation for approximate likelihood.}
 
+\item{optimise_approx_llhood_weights}{Function to optimise weights of approximate log-likelihood.}
+
 \item{find_best_step_scale}{Function to find best step scale.}
 
 \item{max_anneal_temp}{Temperature to anneal likelihood (posterior) to. Max 1.}
+
+\item{use_robust_cov}{Should the covariance be calculated by \code{robust_mean_cov}. Defaults to \code{FALSE} or equivalently \code{cov.wt}.}
 
 \item{save_post_interface}{Logical. Should the memoised interface to the likelihood functions be returned (very large).}
 
