@@ -18,8 +18,7 @@ run_smc_da(
   log_like_approx_comps = NULL,
   draw_prior,
   start_from_approx_fit,
-  optimise_pre_approx_llhood_transformation,
-  optimise_approx_llhood_weights,
+  calibrate_approx_likelihood,
   find_best_step_scale,
   max_anneal_temp = 1,
   use_robust_cov = F,
@@ -56,9 +55,7 @@ run_smc_da(
 
 \item{start_from_approx_fit}{SMC object (list) with approximate fit if start_from_approx is TRUE.}
 
-\item{optimise_pre_approx_llhood_transformation}{Function to optimise pre-transformation for approximate likelihood.}
-
-\item{optimise_approx_llhood_weights}{Function to optimise weights of approximate log-likelihood.}
+\item{calibrate_approx_likelihood}{Function to optimise perform calibration of approximate likelihood within DA.}
 
 \item{find_best_step_scale}{Function to find best step scale.}
 

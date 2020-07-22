@@ -13,8 +13,7 @@
 #' @param log_like_approx_comps Function for approximate log-likelihood that returns components.
 #' @param draw_prior Function to draw random sample from prior.
 #' @param start_from_approx_fit SMC object (list) with approximate fit if start_from_approx is TRUE.
-#' @param optimise_pre_approx_llhood_transformation Function to optimise pre-transformation for approximate likelihood.
-#' @param optimise_approx_llhood_weights Function to optimise weights of approximate log-likelihood.
+#' @param calibrate_approx_likelihood Function to optimise perform calibration of approximate likelihood within DA.
 #' @param find_best_step_scale Function to find best step scale.
 #' @param max_anneal_temp Temperature to anneal likelihood (posterior) to. Max 1.
 #' @param use_robust_cov Should the covariance be calculated by \code{robust_mean_cov}. Defaults to \code{FALSE} or equivalently \code{cov.wt}.
@@ -29,7 +28,7 @@
 run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from_approx = F, refresh_ejd_threshold, par_start,
                        log_prior, log_like, log_like_approx, log_like_approx_comps = NULL, draw_prior,
                        start_from_approx_fit,
-                       optimise_pre_approx_llhood_transformation, optimise_approx_llhood_weights,
+                       calibrate_approx_likelihood,
                        find_best_step_scale,
                        max_anneal_temp = 1,
                        use_robust_cov = F,
@@ -163,53 +162,33 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
 
     if(use_da){
 
-      if(i == 1) intial_par_start <- par_start
-
-      stopifnot(is.null(optimise_pre_approx_llhood_transformation) |
-                  is.null(optimise_approx_llhood_weights))
+      if(i == 1) initial_par_start <- par_start
 
       # pre-tranformation for approx likelihood
-      if(i > 1 & !is.null(optimise_pre_approx_llhood_transformation) ){
+      if(i > 1 & !is.null(calibrate_approx_likelihood) ){
 
         optim_time <- Sys.time()
 
-        approx_ll_tune_optim <- optimise_pre_approx_llhood_transformation(
+        approx_ll_tune_optim <- calibrate_approx_likelihood(
           particles = curr_partl,
           loglike = log_post_llh_interface,
-          D_approx_log_like = dots$Dlog_like_approx_Dbeta, #may not be used.
-          temp = tail(temps, 1),
-          par_start = par_start * 0.5)
-
-        if( is.null(approx_ll_tune_optim) ){
-          # if error in optim
-          approx_ll_tune_optim <- list(par = par_start * 0.5 + intial_par_start * 0.5, trans = identity)
-        }
+          log_like_approx_comps = log_like_approx_comps,
+          par_start = par_start * 0.5,
+          initial_par_start = initial_par_start)
 
         optim_time <- Sys.time() - optim_time
-        pre_trans <- approx_ll_tune_optim$trans
         par_start <- approx_ll_tune_optim$par
 
       } else {
 
         optim_time <- NULL
-        pre_trans <- identity
+        approx_ll_tune_optim <- list(par = NULL,
+                                     trans = identity,
+                                     weights = NULL)
 
       }
 
-      if(!is.null(optimise_approx_llhood_weights) ){
-
-        approx_like_comps <- t(apply(curr_partl[], MARGIN = 1, FUN = log_like_approx_comps, calc_comps = T))
-        log_like_vals <- log_post_llh_interface(curr_partl, type = "full_likelihood")
-
-        approx_ll_weights <- optimise_approx_llhood_weights(approx_comps = approx_like_comps, full_vals = log_like_vals)
-
-      } else {
-
-        approx_ll_weights = NULL
-
-      }
-
-      mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_post_llh_interface, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans, approx_ll_weights = approx_ll_weights, mvn_step_scale = sample_step_scale)
+      mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_post_llh_interface, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = approx_ll_tune_optim$trans, approx_ll_weights = approx_ll_tune_optim$weights, mvn_step_scale = sample_step_scale)
 
     } else {
       mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_post_llh_interface, var = mvn_var$cov, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"))
@@ -247,7 +226,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
       proposed_partl <- mvn_jitter(particles = curr_partl, step_scale = best_ss$step_scale, var = mvn_var$cov)
       #mh_res <- mh_func(new_particles = proposed_partl, old_particles = curr_partl, var = mvn_var$cov, temp = tail(temps,1) )
       if(use_da){
-        mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_post_llh_interface, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = pre_trans, time_on = T, approx_ll_weights = approx_ll_weights, reg_warnings = F)
+        mh_res <- mh_da_step_bglr(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_post_llh_interface, var = mvn_var$cov, temp = tail(temps,1),  pre_trans = approx_ll_tune_optim$trans, time_on = T, approx_ll_weights = approx_ll_tune_optim$weights, reg_warnings = F)
       } else {
         mh_res <- mh_step(new_particles = proposed_partl, old_particles = resampled_partl, loglike = log_post_llh_interface, var = mvn_var$cov, temp = tail(temps,1), type = ifelse(use_approx, "approx_posterior", "full_posterior"), time_on = T)
       }
@@ -290,7 +269,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
         mh_steps = mh_step_count,
         pre_accept_pr = pre_accept_prop,
         accept_pr = accept_prop,
-        ll_opt_par = par_start,
+        approx_ll_calib = approx_ll_tune_optim,
         optim_time = optim_time,
         true_time = difftime(etime, stime, units = "secs"),
         time = difftime(etime, stime, units = "secs") + total_artifical_time
