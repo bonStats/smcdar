@@ -269,7 +269,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
         mh_steps = mh_step_count,
         pre_accept_pr = pre_accept_prop,
         accept_pr = accept_prop,
-        approx_ll_calib = approx_ll_tune_optim,
+        approx_ll_calib = list(par = approx_ll_tune_optim$par, weights = approx_ll_tune_optim$weights),
         optim_time = optim_time,
         true_time = difftime(etime, stime, units = "secs"),
         time = difftime(etime, stime, units = "secs") + total_artifical_time
