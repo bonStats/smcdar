@@ -16,6 +16,7 @@
 #' @param calibrate_approx_likelihood Function to optimise perform calibration of approximate likelihood within DA.
 #' @param find_best_step_scale Function to find best step scale.
 #' @param max_anneal_temp Temperature to anneal likelihood (posterior) to. Max 1.
+#' @param max_mh_steps Maximum allowable cycles per mutation step.
 #' @param use_robust_cov Should the covariance be calculated by \code{robust_mean_cov}. Defaults to \code{FALSE} or equivalently \code{cov.wt}.
 #' @param save_post_interface Logical. Should the memoised interface to the likelihood functions be returned (very large).
 #' @param cores Number of cores.
@@ -31,6 +32,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
                        calibrate_approx_likelihood,
                        find_best_step_scale,
                        max_anneal_temp = 1,
+                       max_mh_steps = 50,
                        use_robust_cov = F,
                        save_post_interface,
                        cores = 1L,
@@ -221,7 +223,7 @@ run_smc_da <- function(num_p, step_scale_set, use_da, use_approx = F, start_from
     mh_step_count <- 1
 
     # update additional times with best_step_scale
-    while( (stats::median(expected_sq_dist) < refresh_ejd_threshold) & (mh_step_count < 50) ){
+    while( (stats::median(expected_sq_dist) < refresh_ejd_threshold) & (mh_step_count < max_mh_steps) ){
 
       proposed_partl <- mvn_jitter(particles = curr_partl, step_scale = best_ss$step_scale, var = mvn_var$cov)
       #mh_res <- mh_func(new_particles = proposed_partl, old_particles = curr_partl, var = mvn_var$cov, temp = tail(temps,1) )

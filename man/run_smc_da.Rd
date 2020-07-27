@@ -21,6 +21,7 @@ run_smc_da(
   calibrate_approx_likelihood,
   find_best_step_scale,
   max_anneal_temp = 1,
+  max_mh_steps = 50,
   use_robust_cov = F,
   save_post_interface,
   cores = 1L,
@@ -60,6 +61,8 @@ run_smc_da(
 \item{find_best_step_scale}{Function to find best step scale.}
 
 \item{max_anneal_temp}{Temperature to anneal likelihood (posterior) to. Max 1.}
+
+\item{max_mh_steps}{Maximum allowable cycles per mutation step.}
 
 \item{use_robust_cov}{Should the covariance be calculated by \code{robust_mean_cov}. Defaults to \code{FALSE} or equivalently \code{cov.wt}.}
 
