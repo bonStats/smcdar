@@ -560,4 +560,6 @@ try_catch_all <- function(expr) {
 
 smc_results <- try_catch_all( run_sim(ss = sim_settings[[1]], verbose = T) )
 
-
+# Warning messages:
+#   Quick-TRANSfer stage steps exceeded maximum (= 250000)
+# occurs from smcdar::robust_mean_cov, doesn't effect results.
