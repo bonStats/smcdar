@@ -1,0 +1,1 @@
+The code for the Lotka Volterra models contained in this directory is under construction. It has not been updated since early in this project. It many need significant changes to operate with the current version of `smcdar`.
