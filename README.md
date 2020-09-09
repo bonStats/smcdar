@@ -5,7 +5,7 @@ Cite as:  Bon, J. J., Lee, A. and Drovandi, C. (2020). Accelerating sequential M
 Link to arxiv: https://arxiv.org/abs/2009.03699
 
  - Corresponding Author: Joshua J Bon
- - Web: https://joshuabon.com
+ - Web: http://joshuabon.com
  - Github: https://github.com/bonStats/undecided-voters-us-pres-elections/
 
 ### Install package
