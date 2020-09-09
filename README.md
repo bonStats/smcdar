@@ -16,4 +16,4 @@ This repository is a set up as an `R` package and can be installed using the fol
 
 ### Example from paper
 
-The examples from the paper can be found in the `analysis/` directory.
+The biased normal and whittle likelihood examples from the paper can be found in the `analysis/` directory.
