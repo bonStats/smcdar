@@ -6,7 +6,7 @@ Link to arxiv: https://arxiv.org/abs/2009.03699
 
  - Corresponding Author: Joshua J Bon
  - Web: http://joshuabon.com
- - Github: https://github.com/bonStats/undecided-voters-us-pres-elections/
+ - Github: https://github.com/bonStats/smcdar
 
 ### Install package
 
