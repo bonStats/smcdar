@@ -14,6 +14,6 @@ This repository is a set up as an `R` package and can be installed using the fol
 
 `remotes::install_github("bonStats/smcdar", dependencies = T)`
 
-### Example from paper
+### Examples from paper
 
 The biased normal and whittle likelihood examples from the paper can be found in the `analysis/` directory.
