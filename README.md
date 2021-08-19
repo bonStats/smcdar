@@ -1,6 +1,6 @@
 ## Code to accompany paper "Accelerating sequential Monte Carlo with surrogate likelihoods"
 
-Cite as:  Bon, J. J., Lee, A. and Drovandi, C. (2020). Accelerating sequential Monte Carlo with surrogate likelihoods,	arXiv:2009.03699
+Cite as:  Bon, J.J., Lee, A. & Drovandi, C. Accelerating sequential Monte Carlo with surrogate likelihoods. Statistics and Computing 31, 62 (2021). https://doi.org/10.1007/s11222-021-10036-4
 
 Link to arxiv: https://arxiv.org/abs/2009.03699
 
