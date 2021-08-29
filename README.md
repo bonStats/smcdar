@@ -10,7 +10,9 @@ Link to arxiv: https://arxiv.org/abs/2009.03699
 
 ### Install package
 
-This repository is a set up as an `R` package and can be installed using the following command:
+This repository is a set up as an `R` package and can be installed using the following commands:
+
+`remotes::install_github("nielsrhansen/expoRkit")`
 
 `remotes::install_github("bonStats/smcdar", dependencies = T)`
 
