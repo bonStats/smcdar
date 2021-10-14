@@ -17,8 +17,8 @@ eve_var_est <- function(particles, log_z, num_iter){
 
   S_0_n <- table(factor(eve(particles), levels = 1:N)) / N
 
-  m_star <- exp(num_iter * ( log(N) - log(N-1) )) * ( Z_sq - sum( S_0_n^2 ) )
+  m_star <- exp(num_iter * ( log(N) - log(N-1) )) * ( 1 - sum( S_0_n^2 ) )
 
-  Z_sq - m_star
+  Z_sq * (1 - m_star)
 
 }
